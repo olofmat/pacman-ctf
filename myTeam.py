@@ -17,6 +17,7 @@ from capture import GameState
 import random, time, util
 from game import Directions
 import game
+from MCTS.AI import MCTSfindMove
 
 #################
 # Team creation #
@@ -73,7 +74,7 @@ class DummyAgent(CaptureAgent):
     CaptureAgent.registerInitialState in captureAgents.py.
     '''
     CaptureAgent.registerInitialState(self, gameState)
-
+    self.start = gameState.getAgentPosition(self.index)
     '''
     Your initialization code goes here, if you need any.
     '''
