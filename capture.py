@@ -122,6 +122,7 @@ class GameState:
     return state
 
   def getAgentState(self, index):
+    
     return self.data.agentStates[index]
 
   def getAgentPosition(self, index):

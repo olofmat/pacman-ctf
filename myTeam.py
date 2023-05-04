@@ -19,6 +19,7 @@ from game import Directions
 import game
 from MCTS.AI import MCTSfindMove
 
+
 #################
 # Team creation #
 #################
