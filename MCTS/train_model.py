@@ -38,7 +38,7 @@ UCB1 = 1.4
 
 def main() -> None:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')
+    # device = torch.device('cpu')
 
     for i in range(10):
         model = Model(OUT_CHANNELS1, OUT_CHANNELS2,
