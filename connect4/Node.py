@@ -12,6 +12,7 @@ class Node:
         self.move = move
         self.player = player                    # self.player makes self.move
 
+
     def makeChildren(self, player: int, moves: list) -> None:
         """Makes a child node for every possible move"""
         for move in moves:
@@ -19,6 +20,7 @@ class Node:
             self.children.append(child)
 
         random.shuffle(self.children)
+
 
     def selectChild(self, C: float) -> object:
         """Uses UCB1 to pick child node"""
@@ -42,6 +44,7 @@ class Node:
         maxIndex = np.argmax(UCB1values)
         return self.children[maxIndex]
 
+
     def backpropagate(self, result: np.ndarray) -> None:
         """Updates value and visits according to result"""
         instance = self
@@ -49,6 +52,7 @@ class Node:
             instance.visits += 1
             instance.value += result[0] if instance.player == 1 else result[1]
             instance = instance.parent
+
 
     def chooseMove(self) -> int:
         """Chooses most promising move from the list of children"""
@@ -63,6 +67,7 @@ class Node:
 
         chosenChild = self.children[maxIndex]
         return chosenChild.move
+
 
     def nextPlayer(self) -> int:
         return -1*self.player
