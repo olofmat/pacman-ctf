@@ -6,9 +6,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
-from AI import MCTSfindMove
-from Connect4Model import Model
-from gameplay import availableMoves, gameEnd, makeMove, nextPlayer
+from MCTS.AI import MCTSfindMove
+from MCTS.Connect4Model import Model
+from MCTS.gameplay import availableMoves, gameEnd, makeMove, nextPlayer
 
 
 # Saving/Loading

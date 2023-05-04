@@ -1,7 +1,7 @@
 import pygame
 import sys
 import numpy as np
-from gameplay import availableMoves
+from MCTS.gameplay import availableMoves
 
 WHITE = (230, 230, 230)
 GREY = (180, 180, 180)

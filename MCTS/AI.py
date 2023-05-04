@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import time
 
-from Connect4Model import Model
-from gameplay import availableMoves, gameEnd, makeMove, nextPlayer, randomMove
-from Node import Node
+from MCTS.Connect4Model import Model
+from MCTS.gameplay import availableMoves, gameEnd, makeMove, nextPlayer, randomMove
+from MCTS.Node import Node
 
 
 def MCTSfindMove(rootState: np.ndarray, rootPlayer: int, simulations: int, UCB1: float, model: nn.Module = None, device: torch.device = None, cutoff: bool = False) -> int:
