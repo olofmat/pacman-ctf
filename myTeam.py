@@ -13,6 +13,7 @@
 
 
 from captureAgents import CaptureAgent
+from capture import GameState
 import random, time, util
 from game import Directions
 import game
@@ -52,7 +53,7 @@ class DummyAgent(CaptureAgent):
   create an agent as this is the bare minimum.
   """
 
-  def registerInitialState(self, gameState):
+  def registerInitialState(self, gameState:GameState):
     """
     This method handles the initial setup of the
     agent to populate useful fields (such as what team
@@ -78,7 +79,7 @@ class DummyAgent(CaptureAgent):
     '''
 
 
-  def chooseAction(self, gameState):
+  def chooseAction(self, gameState:GameState):
     """
     Picks among actions randomly.
     """

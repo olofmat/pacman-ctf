@@ -1,8 +1,10 @@
 {
     "cSpell.words": [
         "blit",
+        "distancer",
         "KEYDOWN",
         "MOUSEBUTTONDOWN",
+        "Pacman",
         "rollouts",
         "Sfind",
         "vinstprocent"
