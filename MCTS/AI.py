@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import time
 
-from Connect4Model import Model
-from gameplay import availableMoves, gameEnd, makeMove, nextPlayer, randomMove
-from Node import Node
+from MCTS.Connect4Model import Model
+from MCTS.gameplay import availableMoves, gameEnd, makeMove, nextPlayer, randomMove
+from MCTS.Node import Node
 
 
 def MCTSfindMove(rootState: np.ndarray, rootPlayer: int, simulations: int, UCB1: float, model: nn.Module = None, device: torch.device = None, cutoff: bool = False) -> int:
@@ -95,7 +95,7 @@ def evaluationNN(board: np.ndarray, currentPlayer: int, model: nn.Module, device
 def loadModel(file: str = '/home/anton/skola/egen/pytorch/connect4/models/Connect4model200k.pth'):
     OUT_CHANNELS1, OUT_CHANNELS2, HIDDEN_SIZE1, HIDDEN_SIZE2 = 6, 6, 120, 72
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')
+    # device = torch.device('cpu')
     model = Model(OUT_CHANNELS1, OUT_CHANNELS2,
                   HIDDEN_SIZE1, HIDDEN_SIZE2).to(device)
     model.load_state_dict(torch.load(file, map_location='cpu'))

@@ -82,14 +82,11 @@ class DummyAgent(CaptureAgent):
 
 
   def chooseAction(self, gameState:GameState):
-    """
-    Picks among actions randomly.
-    """
-    actions = gameState.getLegalActions(self.index)
 
-    '''
-    You should change this in your own agent.
-    '''
+    actions = gameState.getLegalActions(self.index)
+    print(actions)
+    print(actions[0])
+
 
     return random.choice(actions)
 

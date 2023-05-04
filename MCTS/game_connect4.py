@@ -5,9 +5,9 @@ import torch
 import numpy as np
 import pygame
 
-from AI import MCTSfindMove, loadModel
-from gameplay import availableMoves, gameEnd, makeMove, nextPlayer
-from interface import (draw, gameOver, initializeGame,
+from MCTS.AI import MCTSfindMove, loadModel
+from MCTS.gameplay import availableMoves, gameEnd, makeMove, nextPlayer
+from MCTS.interface import (draw, gameOver, initializeGame,
                        resolveEvent)
 
 # Configurations
