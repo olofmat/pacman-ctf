@@ -1,15 +1,17 @@
+import time
+
 import numpy as np
 import torch
 import torch.nn as nn
-import time
 
+from capture import GameState
 from MCTS.Connect4Model import Model
-from MCTS.gameplay import availableMoves, gameEnd, makeMove, nextPlayer, randomMove
+from MCTS.gameplay import nextPlayer, randomMove, result
 from MCTS.Node import Node
 
 
-def MCTSfindMove(rootState: np.ndarray, rootPlayer: int, simulations: int, UCB1: float, model: nn.Module = None, device: torch.device = None, cutoff: bool = False) -> int:
-    moves = availableMoves(rootState)
+def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: float = np.inf, sim_number: int = 100_000_000, cutoff: int = 0, model: nn.Module = None, device: torch.device = None) -> str:
+    moves = rootState.getLegalActions(rootPlayer)
 
     if not moves:
         return None
@@ -18,78 +20,82 @@ def MCTSfindMove(rootState: np.ndarray, rootPlayer: int, simulations: int, UCB1:
     root.makeChildren(rootPlayer, moves)
 
     startTime = time.process_time()
-    for _ in range(simulations):
-        if time.process_time() - startTime > 10000:
+    for _ in range(sim_number):
+        if time.process_time() - startTime > sim_time:
             printData(root)
             return root.chooseMove()
 
-        currentState = rootState.copy()
+        currentState = GameState(rootState)
         current = root
 
         # Tree traverse
         while len(current.children) > 0:
             current = current.selectChild(UCB1)
-            row = makeMove(currentState, current.player, current.move)
+            if currentState.getAgentPosition(current.player):
+                currentState = currentState.generateSuccessor(current.player, current.move)
 
             # returns a move if visits exceeds half of total simulations
-            if current.visits >= 0.5*simulations:
+            if current.visits >= 0.5*sim_number:
                 # printData(root)
                 return current.move
 
         # Expand tree if current has been visited and isn't a terminal node
-        if current.visits > 0 and not gameEnd(currentState, row, current.move).any():
-            moves = availableMoves(currentState)
-            current.makeChildren(current.nextPlayer(), moves)
-            current = current.selectChild(UCB1)
-            row = makeMove(currentState, current.player, current.move)
+        if current.visits > 0 and not currentState.isOver():
+            if currentState.getAgentPosition(current.nextPlayer()):
+                moves = currentState.getLegalActions(current.nextPlayer())
+                current.makeChildren(current.nextPlayer(), moves)
+                current = current.selectChild(UCB1)
+                currentState = currentState.generateSuccessor(current.player, current.move)
+            else:
+                moves = ['Stop']
+                current.makeChildren(current.nextPlayer(), moves)
+                current = current.selectChild(UCB1)
 
         # Rollout
-        result = rolloutNN(currentState, current.nextPlayer(),
-                         row, current.move, model, device, cutoff)
+        result = rolloutHeuristic(currentState, current.nextPlayer(), cutoff)
 
         # Backpropagate
-        current.backpropagate(result)
+        current.backpropagate(rootState, result)
 
     # printData(root)
     return root.chooseMove()
 
-
-def rolloutNN(currentState: np.ndarray, currentPlayer: int, row: int, move: int, model: nn.Module = None, device: torch.device = None, cutoff: bool = False) -> np.ndarray:
-    # finds a random move and executes it if possible
+    
+def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -> np.ndarray:
+    movesInRollout = 0
+    # finds a random move and executes it if possible. as long as gameEnd is False and movesInRollout is less than cutoff
     while True:
-        result = gameEnd(currentState, row, move)
-        if result.any():
-            return result
+        if currentState.isOver():
+            return result()
 
-        if cutoff:
-            return evaluationNN(currentState, currentPlayer, model, device)
+        if movesInRollout >= cutoff:
+            return evaluationHeuristic(currentState)
 
-        moves = availableMoves(currentState)
-        if not moves:
-            return np.array([0, 0])
-
+        if currentState.getAgentPosition(currentPlayer):
+            moves = currentState.getLegalActions(currentPlayer)
+        else:
+            moves = ['Stop']
         move = randomMove(moves)
-        row = makeMove(currentState, currentPlayer, move)
+        currentState = currentState.generateSuccessor(currentPlayer, move)
+
+        movesInRollout += 1
         currentPlayer = nextPlayer(currentPlayer)
 
 
-def evaluationNN(board: np.ndarray, currentPlayer: int, model: nn.Module, device: torch.device) -> np.ndarray:
-    returnValue = 0
-    if type(model) == list:
-        for m in model:
-            input = m.board2tensor(board, currentPlayer, device)
-            prob = m(input)[0][0]
-            prob = torch.softmax(prob, dim=0)
-            returnValue += (prob[0]-prob[2]).item()
-        returnValue /= len(model)
-        return np.array([returnValue, -returnValue])
+def evaluationHeuristic(gameState: GameState) -> np.ndarray:
+    foodCapturedByYou = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
+    foodCapturedByOpponent = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
+    score = gameState.getScore()
 
-    else:
-        input = model.board2tensor(board, currentPlayer, device)
-        prob = model(input)[0][0]
-        prob = torch.softmax(prob, dim=0)
-        eval = (prob[0]-prob[2]).item()
-        return np.array([eval, -eval])
+    ### RESONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
+    ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
+    heuristic = score + 1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
+    # print(f"my captured {foodCapturedByYou}, opponent captured: {foodCapturedByOpponent}, score: {score}")
+    
+    # totalValue = np.tanh(heuristic)
+
+    return np.array([heuristic, -heuristic])
+
 
 
 def loadModel(file: str = '/home/anton/skola/egen/pytorch/connect4/models/Connect4model200k.pth'):
@@ -116,42 +122,45 @@ def printData(root: object) -> None:
     print(childVisits)
     print('')
     
-    
-### from fox game
-def rolloutHeuristic(currentState: np.ndarray, currentPlayer: int, currentNonProgressMoves: int, cutoff: int, f: float, k: float, b: float, MOVES_BEFORE_DRAW: int, VALUE_MATRIX: np.ndarray, ) -> np.ndarray:
-    movesInRollout = 0
-    # finds a random move and executes it if possible. as long as gameEnd is False and movesInRollout is less than cutoff
-    while True:
-        result = gameEnd(
-            currentState, currentNonProgressMoves, MOVES_BEFORE_DRAW)
-        if result.any():
-            return result
-
-        if movesInRollout >= cutoff:
-            return evaluationNN(currentState, f, k, b, VALUE_MATRIX)
-
-        moves, totalEaten = availableMoves(currentState, currentPlayer)
-        move, eaten = randomMove(moves, totalEaten)
-        makeMove(currentState, currentPlayer, move, eaten)
-
-        movesInRollout += 1
-        currentPlayer = nextPlayer(currentPlayer)
 
 
-def evaluationHeuristic(currentState: np.ndarray, f: float, k: float, b: float, VALUE_MATRIX: np.ndarray) -> np.ndarray:
-    sheep, foxes, value = 0, 0, 0
-    for row in range(7):
-        for col in range(7):
-            spot = currentState[row][col]
-            if spot == 2:
-                value += VALUE_MATRIX[row][col]
-                sheep += 1
-            elif spot == 1:
-                foxes += 1
+# Hoppa över motståndarens stop om man inte ser dem 
 
-    material = k*(f*(foxes-2) - (1-f)*(sheep-20))
-    positional = -0.1*(1-k)*(value-38)
-    eval = material + positional
 
-    totalValue = np.tanh(b*eval)
-    return np.array([totalValue, -totalValue])  # , material, positional
+
+# def rolloutNN(currentState: np.ndarray, currentPlayer: int, row: int, move: int, model: nn.Module = None, device: torch.device = None, cutoff: bool = False) -> np.ndarray:
+#     # finds a random move and executes it if possible
+#     while True:
+#         result = gameEnd(currentState, row, move)
+#         if result.any():
+#             return result
+
+#         if cutoff:
+#             return evaluationNN(currentState, currentPlayer, model, device)
+
+#         moves = availableMoves(currentState)
+#         if not moves:
+#             return np.array([0, 0])
+
+#         move = randomMove(moves)
+#         row = makeMove(currentState, currentPlayer, move)
+#         currentPlayer = nextPlayer(currentPlayer)
+
+
+# def evaluationNN(board: np.ndarray, currentPlayer: int, model: nn.Module, device: torch.device) -> np.ndarray:
+#     returnValue = 0
+#     if type(model) == list:
+#         for m in model:
+#             input = m.board2tensor(board, currentPlayer, device)
+#             prob = m(input)[0][0]
+#             prob = torch.softmax(prob, dim=0)
+#             returnValue += (prob[0]-prob[2]).item()
+#         returnValue /= len(model)
+#         return np.array([returnValue, -returnValue])
+
+#     else:
+#         input = model.board2tensor(board, currentPlayer, device)
+#         prob = model(input)[0][0]
+#         prob = torch.softmax(prob, dim=0)
+#         eval = (prob[0]-prob[2]).item()
+#         return np.array([eval, -eval])

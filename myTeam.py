@@ -85,14 +85,17 @@ class DummyAgent(CaptureAgent):
 
   def chooseAction(self, gameState:GameState):
 
+    move = MCTSfindMove(gameState, self.index, UCB1=0.4, sim_time = 0.9)
+
+
     # print("")
     # print(gameState.getScore())
 
-    time.sleep(0.2)
+    # time.sleep(0.2)
 
-    print("myTeam/choseAction")
-    print(self.heuristicFunction(gameState))
-    self.heuristicFunction(gameState)
+    # print("myTeam/choseAction")
+    # print(self.heuristicFunction(gameState))
+    # self.heuristicFunction(gameState)
     # if()    
     # print(gameState.getRedFood)
     # print([gameState.getAgentPosition(0),gameState.getAgentPosition(1),gameState.getAgentPosition(2),gameState.getAgentPosition(3)])
@@ -105,25 +108,21 @@ class DummyAgent(CaptureAgent):
     # print(sum)
     actions = gameState.getLegalActions(self.index)
     
-    # actions.remove("Stop")
-    # print(actions)
-    # print(actions[0])
 
-
-    return random.choice(actions)
+    return move
   
   
-  def heuristicFunction(self, gameState:GameState) -> float:
+#   def heuristicFunction(self, gameState:GameState) -> float:
 
-    foodCapturedByYou =  self.startingNumberOfFood-len(self.getFood(gameState).asList())
-    foodCapturedByOpponent = self.startingNumberOfFood - len(self.getFoodYouAreDefending(gameState).asList())    
-    score = self.getScore(gameState)
+#     foodCapturedByYou =  self.startingNumberOfFood-len(self.getFood(gameState).asList())
+#     foodCapturedByOpponent = self.startingNumberOfFood - len(self.getFoodYouAreDefending(gameState).asList())    
+#     score = self.getScore(gameState)
 
-    ### RESONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
-    ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
-    heuristic = score+1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
+#     ### RESONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
+#     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
+#     heuristic = score+1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
 
-    return heuristic
+#     return heuristic
 
 
 

@@ -1,10 +1,10 @@
 import random
-
 import numpy as np
+from capture import GameState
 
 
 class Node:
-    def __init__(self, player: int, move=None, parent=None) -> None:
+    def __init__(self, player: int, move:str=None, parent=None) -> None:
         self.value = np.array(0, np.float32)
         self.visits = np.array(0, np.int32)
         self.parent = parent
@@ -45,12 +45,12 @@ class Node:
         return self.children[maxIndex]
 
 
-    def backpropagate(self, result: np.ndarray) -> None:
+    def backpropagate(self, gameState:GameState, result: np.ndarray) -> None:
         """Updates value and visits according to result"""
         instance = self
         while instance != None:
             instance.visits += 1
-            instance.value += result[0] if instance.player == 1 else result[1]
+            instance.value += result[0] if gameState.isOnRedTeam(instance.player) else result[1]
             instance = instance.parent
 
 
@@ -70,4 +70,4 @@ class Node:
 
 
     def nextPlayer(self) -> int:
-        return -1*self.player
+        return (self.player+1) % 4
