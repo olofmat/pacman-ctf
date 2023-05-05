@@ -85,27 +85,9 @@ class DummyAgent(CaptureAgent):
 
   def chooseAction(self, gameState:GameState):
 
-    move = MCTSfindMove(gameState, self.index, UCB1=0.4, sim_time = 0.9)
+    move = MCTSfindMove(gameState, self.index, UCB1=0.4, sim_time = 1)
 
 
-    # print("")
-    # print(gameState.getScore())
-
-    # time.sleep(0.2)
-
-    # print("myTeam/choseAction")
-    # print(self.heuristicFunction(gameState))
-    # self.heuristicFunction(gameState)
-    # if()    
-    # print(gameState.getRedFood)
-    # print([gameState.getAgentPosition(0),gameState.getAgentPosition(1),gameState.getAgentPosition(2),gameState.getAgentPosition(3)])
-    sum = 0
-    # print(gameState.getLegalActions((self.index+2)%4))
-    # for i in [0,1,2,3]:
-    #   if(gameState.getAgentPosition(i) != None):
-    #     sum += 1
-
-    # print(sum)
     actions = gameState.getLegalActions(self.index)
     
 
