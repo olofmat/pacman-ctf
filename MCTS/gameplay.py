@@ -12,5 +12,5 @@ def nextPlayer(player: int) -> int:
 
 
 def result(gameState:GameState):
-    if gameState.getScore() > 0: return np.array([1, 0])
-    return np.array([0, 1])
+    if gameState.getScore() > 0: return np.array([1, -1])
+    return np.array([-1, 1])

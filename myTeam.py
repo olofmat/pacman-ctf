@@ -15,10 +15,12 @@
 from captureAgents import CaptureAgent
 from capture import GameState
 import random, time, util
-from game import Directions
+from game import Directions, Actions
 import game
 from MCTS.AI import MCTSfindMove
-
+import heapq
+from typing import Tuple
+import numpy as np
 
 #################
 # Team creation #
@@ -74,55 +76,60 @@ class DummyAgent(CaptureAgent):
     on initialization time, please take a look at
     CaptureAgent.registerInitialState in captureAgents.py.
     '''
-    self.startingNumberOfFood = len(self.getFood(gameState).asList())
-    
     CaptureAgent.registerInitialState(self, gameState)
-    self.start = gameState.getAgentPosition(self.index)
-    '''
-    Your initialization code goes here, if you need any.
-    '''
-
-
-  def chooseAction(self, gameState:GameState):
-
-    move = MCTSfindMove(gameState, self.index, UCB1=0.4, sim_time = 0.9)
-
-
-    # print("")
-    # print(gameState.getScore())
-
-    # time.sleep(0.2)
-
-    # print("myTeam/choseAction")
-    # print(self.heuristicFunction(gameState))
-    # self.heuristicFunction(gameState)
-    # if()    
-    # print(gameState.getRedFood)
-    # print([gameState.getAgentPosition(0),gameState.getAgentPosition(1),gameState.getAgentPosition(2),gameState.getAgentPosition(3)])
-    sum = 0
-    # print(gameState.getLegalActions((self.index+2)%4))
-    # for i in [0,1,2,3]:
-    #   if(gameState.getAgentPosition(i) != None):
-    #     sum += 1
-
-    # print(sum)
-    actions = gameState.getLegalActions(self.index)
     
-
-    return move
-  
-  
-#   def heuristicFunction(self, gameState:GameState) -> float:
-
-#     foodCapturedByYou =  self.startingNumberOfFood-len(self.getFood(gameState).asList())
-#     foodCapturedByOpponent = self.startingNumberOfFood - len(self.getFoodYouAreDefending(gameState).asList())    
-#     score = self.getScore(gameState)
-
-#     ### RESONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
-#     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
-#     heuristic = score+1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
-
-#     return heuristic
+    self.walls = gameState.data.layout.walls
+    self.dir_str2vec = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0)}
+    self.dir_vec2str = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
+    
+    middle = (15, 7)
+    self.moves = self.movesToPoint(gameState, middle)
 
 
+  def chooseAction(self, gameState:GameState) -> str:
+    if self.moves:
+        return self.moves.pop(0)
+    return MCTSfindMove(gameState, self.index, UCB1=0.4, sim_time = 0.9)
 
+
+  def movesToPoint(self, gameState:GameState, point:Tuple[int]) -> list[str]:
+    init_pos = gameState.getAgentPosition(self.index)
+    
+    checked = set()
+    queue = []
+    
+    heapq.heappush(queue, (0, [init_pos]))
+    checked.add(init_pos)
+
+    while queue:
+        current_cost, current_path = heapq.heappop(queue)
+        current_pos = current_path[-1]
+        
+        if current_pos == point:
+            path = np.array(current_path)
+            (path[1:] - path[:-1]).tolist()
+            
+            return [self.dir_vec2str[(current_path[i+1][0] - current_path[i][0], current_path[i+1][1] - current_path[i][1])] for i in range(len(current_path)-1)]
+
+        for dir in self.getPossibleDirections(current_pos):
+            dx, dy = self.dir_str2vec[dir]
+            new_pos = (current_pos[0] + dx, current_pos[1] + dy)
+            if new_pos not in checked:
+                new_path = current_path.copy()
+                new_path.append(new_pos)
+                heapq.heappush(queue, (current_cost+1, new_path))
+                checked.add(new_pos)
+        
+        
+  def getPossibleDirections(self, pos:Tuple[int]) -> list[str]:
+    possible = []
+    x, y = pos
+
+    for dir, vec in self.dir_str2vec.items():
+        if dir == 'Stop': continue
+        dx, dy = vec
+        next_y = y + dy
+        next_x = x + dx
+        if not self.walls[next_x][next_y]: possible.append(dir)
+
+    return possible

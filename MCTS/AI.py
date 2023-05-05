@@ -12,6 +12,7 @@ from MCTS.Node import Node
 
 def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: float = np.inf, sim_number: int = 100_000_000, cutoff: int = 0, model: nn.Module = None, device: torch.device = None) -> str:
     moves = rootState.getLegalActions(rootPlayer)
+    moves.remove('Stop')
 
     if not moves:
         return None
@@ -43,6 +44,7 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
         if current.visits > 0 and not currentState.isOver():
             if currentState.getAgentPosition(current.nextPlayer()):
                 moves = currentState.getLegalActions(current.nextPlayer())
+                moves.remove('Stop')
                 current.makeChildren(current.nextPlayer(), moves)
                 current = current.selectChild(UCB1)
                 currentState = currentState.generateSuccessor(current.player, current.move)
@@ -73,6 +75,7 @@ def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -
 
         if currentState.getAgentPosition(currentPlayer):
             moves = currentState.getLegalActions(currentPlayer)
+            moves.remove('Stop')
         else:
             moves = ['Stop']
         move = randomMove(moves)
@@ -92,7 +95,7 @@ def evaluationHeuristic(gameState: GameState) -> np.ndarray:
     heuristic = score + 1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
     # print(f"my captured {foodCapturedByYou}, opponent captured: {foodCapturedByOpponent}, score: {score}")
     
-    # totalValue = np.tanh(heuristic)
+    # heuristic = np.tanh(heuristic)
 
     return np.array([heuristic, -heuristic])
 
