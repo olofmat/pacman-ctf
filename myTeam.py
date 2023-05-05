@@ -74,6 +74,8 @@ class DummyAgent(CaptureAgent):
     on initialization time, please take a look at
     CaptureAgent.registerInitialState in captureAgents.py.
     '''
+    self.startingNumberOfFood = len(self.getFood(gameState).asList())
+    
     CaptureAgent.registerInitialState(self, gameState)
     self.start = gameState.getAgentPosition(self.index)
     '''
@@ -83,10 +85,45 @@ class DummyAgent(CaptureAgent):
 
   def chooseAction(self, gameState:GameState):
 
+    # print("")
+    # print(gameState.getScore())
+
+    time.sleep(0.2)
+
+    print("myTeam/choseAction")
+    print(self.heuristicFunction(gameState))
+    self.heuristicFunction(gameState)
+    # if()    
+    # print(gameState.getRedFood)
+    # print([gameState.getAgentPosition(0),gameState.getAgentPosition(1),gameState.getAgentPosition(2),gameState.getAgentPosition(3)])
+    sum = 0
+    # print(gameState.getLegalActions((self.index+2)%4))
+    # for i in [0,1,2,3]:
+    #   if(gameState.getAgentPosition(i) != None):
+    #     sum += 1
+
+    # print(sum)
     actions = gameState.getLegalActions(self.index)
-    print(actions)
-    print(actions[0])
+    
+    # actions.remove("Stop")
+    # print(actions)
+    # print(actions[0])
 
 
     return random.choice(actions)
+  
+  
+  def heuristicFunction(self, gameState:GameState) -> float:
+
+    foodCapturedByYou =  self.startingNumberOfFood-len(self.getFood(gameState).asList())
+    foodCapturedByOpponent = self.startingNumberOfFood - len(self.getFoodYouAreDefending(gameState).asList())    
+    score = self.getScore(gameState)
+
+    ### RESONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
+    ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
+    heuristic = score+1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
+
+    return heuristic
+
+
 
