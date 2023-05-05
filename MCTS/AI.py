@@ -9,28 +9,49 @@ from MCTS.Connect4Model import Model
 from MCTS.gameplay import nextPlayer, randomMove, result
 from MCTS.Node import Node
 
+import operator
 
-def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: float = np.inf, sim_number: int = 100_000_000, cutoff: int = 0, model: nn.Module = None, device: torch.device = None) -> str:
+
+def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: float = np.inf, sim_number: int = 100000000, cutoff: int = 0, model: nn.Module = None, device: torch.device = None) -> str:
     moves = rootState.getLegalActions(rootPlayer)
     moves.remove('Stop')
 
+    print("start")
+
+    starting_position = rootState.getAgentPosition(rootPlayer)
+    
+    
+    furthest_away_distance = 0
+    furthest_away_position = starting_position
+
+    max_depth = 0
+
+
     if not moves:
         return None
+
+    moves.remove("Stop")
 
     root = Node(rootPlayer)
     root.makeChildren(rootPlayer, moves)
 
     startTime = time.process_time()
     for _ in range(sim_number):
+        # print(time.process_time()-startTime)
         if time.process_time() - startTime > sim_time:
+            print(starting_position)
+            print(furthest_away_position)
+            print("maximum depth was: "+ str(max_depth) + "and maximum distance was" + str(furthest_away_distance))
             printData(root)
             return root.chooseMove()
 
         currentState = GameState(rootState)
         current = root
-
+        current_depth = 0
         # Tree traverse
+
         while len(current.children) > 0:
+            current_depth += 1
             current = current.selectChild(UCB1)
             if currentState.getAgentPosition(current.player):
                 currentState = currentState.generateSuccessor(current.player, current.move)
@@ -40,14 +61,29 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
                 # printData(root)
                 return current.move
 
+        if(current_depth > max_depth): max_depth = current_depth
+
         # Expand tree if current has been visited and isn't a terminal node
         if current.visits > 0 and not currentState.isOver():
             if currentState.getAgentPosition(current.nextPlayer()):
                 moves = currentState.getLegalActions(current.nextPlayer())
-                moves.remove('Stop')
+                moves.remove("Stop")
                 current.makeChildren(current.nextPlayer(), moves)
                 current = current.selectChild(UCB1)
                 currentState = currentState.generateSuccessor(current.player, current.move)
+                
+                if(current.player == rootPlayer):
+                    # print(currentState.getAgentPosition(rootPlayer)-starting_position)
+                    new_pos = currentState.getAgentPosition(rootPlayer)
+                    difference = (new_pos[0]-starting_position[0],new_pos[1]-starting_position[1])
+                    dist = np.sqrt(difference[0]**2+difference[1]**2)
+                    # print(dist)
+                    if(dist>furthest_away_distance):
+                        furthest_away_position = currentState.getAgentPosition(rootPlayer)
+                        furthest_away_distance = dist
+
+                    # if(currentState.getAgentPosition(rootPlayer))
+
             else:
                 moves = ['Stop']
                 current.makeChildren(current.nextPlayer(), moves)
@@ -59,6 +95,7 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
         # Backpropagate
         current.backpropagate(rootState, result)
 
+    
     # printData(root)
     return root.chooseMove()
 
@@ -90,12 +127,16 @@ def evaluationHeuristic(gameState: GameState) -> np.ndarray:
     foodCapturedByOpponent = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
     score = gameState.getScore()
 
+    
+
     ### RESONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
     heuristic = score + 1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
     # print(f"my captured {foodCapturedByYou}, opponent captured: {foodCapturedByOpponent}, score: {score}")
     
     # heuristic = np.tanh(heuristic)
+
+    
 
     return np.array([heuristic, -heuristic])
 
