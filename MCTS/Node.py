@@ -70,6 +70,6 @@ class Node:
 
 
     def nextPlayer(self, players:np.ndarray) -> int:
-        player_index = np.where(players == self.player)        
-        return (player_index[0][0]+1) % players.size
+        player_index = np.where(players == self.player)
+        return players[(player_index[0][0]+1) % players.size]
     

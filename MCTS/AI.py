@@ -15,24 +15,26 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
     removeStop(moves)
     if not moves:
         return None
-
     
     starting_position = rootState.getAgentPosition(rootPlayer)
     furthest_away_distance = 0
     furthest_away_position = starting_position
     max_depth = 0
 
-    players = np.arange(4)
+    players = []
+    for i in range(4):
+        if rootState.getAgentPosition(i) and (not rootState.isOnRedTeam(i) or i == rootPlayer): players.append(i)
+    players = np.array(players)
+
     root = Node(rootPlayer)
     root.makeChildren(rootPlayer, moves)
 
     startTime = time.process_time()
     for _ in range(sim_number):
-        # print(time.process_time()-startTime)
         if time.process_time() - startTime > sim_time:
-            print(starting_position)
-            print(furthest_away_position)
-            print("maximum depth was: "+ str(max_depth) + "and maximum distance was" + str(furthest_away_distance))
+            # print(starting_position)
+            # print(furthest_away_position)
+            print(f"maximum depth was: {max_depth} and maximum distance was {furthest_away_distance:0.2f}")
             printData(root)
             return root.chooseMove()
 
@@ -44,8 +46,7 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
         while len(current.children) > 0:
             current_depth += 1
             current = current.selectChild(UCB1)
-            if currentState.getAgentPosition(current.player):
-                currentState = currentState.generateSuccessor(current.player, current.move)
+            currentState = currentState.generateSuccessor(current.player, current.move)
 
             # returns a move if visits exceeds half of total simulations
             if current.visits >= 0.5*sim_number:
@@ -56,21 +57,15 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
 
         # Expand tree if current has been visited and isn't a terminal node
         if current.visits > 0 and not currentState.isOver():
-            if currentState.getAgentPosition(current.nextPlayer(players)):
-                moves = currentState.getLegalActions(current.nextPlayer(players))
-                removeStop(moves)
-                current.makeChildren(current.nextPlayer(players), moves)
-                current = current.selectChild(UCB1)
-                currentState = currentState.generateSuccessor(current.player, current.move)
-                
-                if(current.player == rootPlayer):
-                    furthest_away_distance, furthest_away_position = calculate_depth(
-                        currentState, starting_position, furthest_away_distance, furthest_away_position, rootPlayer)
-
-            else:
-                moves = ['Stop']
-                current.makeChildren(current.nextPlayer(players), moves)
-                current = current.selectChild(UCB1)
+            moves = currentState.getLegalActions(current.nextPlayer(players))
+            removeStop(moves)
+            current.makeChildren(current.nextPlayer(players), moves)
+            current = current.selectChild(UCB1)
+            currentState = currentState.generateSuccessor(current.player, current.move)
+            
+            if(current.player == rootPlayer):
+                furthest_away_distance, furthest_away_position = calculate_depth(
+                    currentState, starting_position, furthest_away_distance, furthest_away_position, rootPlayer)
 
         # Rollout
         result = rolloutHeuristic(currentState, current.nextPlayer(players), cutoff)
@@ -78,8 +73,7 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
         # Backpropagate
         current.backpropagate(rootState, result)
 
-    
-    # printData(root)
+    printData(root)
     return root.chooseMove()
 
     
@@ -93,11 +87,8 @@ def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -
         if movesInRollout >= cutoff:
             return evaluationHeuristic(currentState)
 
-        if currentState.getAgentPosition(currentPlayer):
-            moves = currentState.getLegalActions(currentPlayer)
-            removeStop(moves)
-        else:
-            moves = ['Stop']
+        moves = currentState.getLegalActions(currentPlayer)
+        removeStop(moves)
         move = randomMove(moves)
         currentState = currentState.generateSuccessor(currentPlayer, move)
 
@@ -127,11 +118,9 @@ def removeStop(list:list) -> None:
     
     
 def calculate_depth(gameState:GameState, starting_position, furthest_away_distance:int, furthest_away_position:int, rootPlayer:int):
-    # print(currentState.getAgentPosition(rootPlayer)-starting_position)
     new_pos = gameState.getAgentPosition(rootPlayer)
     difference = (new_pos[0]-starting_position[0],new_pos[1]-starting_position[1])
     dist = np.sqrt(difference[0]**2+difference[1]**2)
-    # print(dist)
     if(dist>furthest_away_distance):
         furthest_away_position = gameState.getAgentPosition(rootPlayer)
         furthest_away_distance = dist

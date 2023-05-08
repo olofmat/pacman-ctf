@@ -8,7 +8,10 @@ def randomMove(moves: list) -> int:
 
 
 def nextPlayer(player: int, players:np.ndarray) -> int:
+    print("players, player",players, player)
     player_index = np.where(players == player)
+    print(player_index)
+    
     return (player_index[0][0]+1) % players.size
 
 
