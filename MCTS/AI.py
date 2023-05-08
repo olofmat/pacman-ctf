@@ -23,7 +23,9 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
 
     players = []
     for i in range(4):
-        if rootState.getAgentPosition(i) and (not rootState.isOnRedTeam(i) or i == rootPlayer): players.append(i)
+        pos = rootState.getAgentPosition(i)
+        if not pos: continue
+        if rootPlayer == i or not (rootState.isOnRedTeam(i) == rootState.isOnRedTeam(rootPlayer)) or (pos[0]-starting_position[0])**2 + (pos[1]-starting_position[1])**2 <= 25: players.append(i)
     players = np.array(players)
 
     root = Node(rootPlayer)
@@ -32,9 +34,8 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
     startTime = time.process_time()
     for _ in range(sim_number):
         if time.process_time() - startTime > sim_time:
-            # print(starting_position)
-            # print(furthest_away_position)
-            print(f"maximum depth was: {max_depth} and maximum distance was {furthest_away_distance:0.2f}")
+            distance = [x-y for x, y in zip(furthest_away_position, starting_position)]
+            print(f"maximum depth: {max_depth}, checked {distance} from starting position in {starting_position}")
             printData(root)
             return root.chooseMove()
 
@@ -53,7 +54,7 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
                 printData(root)
                 return current.move
 
-        if(current_depth > max_depth): max_depth = current_depth
+        if (current_depth > max_depth): max_depth = current_depth
 
         # Expand tree if current has been visited and isn't a terminal node
         if current.visits > 0 and not currentState.isOver():
@@ -63,7 +64,7 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
             current = current.selectChild(UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
             
-            if(current.player == rootPlayer):
+            if (current.player == rootPlayer):
                 furthest_away_distance, furthest_away_position = calculate_depth(
                     currentState, starting_position, furthest_away_distance, furthest_away_position, rootPlayer)
 
@@ -153,10 +154,6 @@ def printData(root: object) -> None:
     print(childVisits)
     print('')
     
-
-
-# Hoppa över motståndarens stop om man inte ser dem 
-
 
 
 # def rolloutNN(currentState: np.ndarray, currentPlayer: int, row: int, move: int, model: nn.Module = None, device: torch.device = None, cutoff: bool = False) -> np.ndarray:
