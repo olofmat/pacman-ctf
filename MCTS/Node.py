@@ -45,12 +45,12 @@ class Node:
         return self.children[maxIndex]
 
 
-    def backpropagate(self, gameState:GameState, result: np.ndarray) -> None:
+    def backpropagate(self, gameState:GameState, result: float) -> None:
         """Updates value and visits according to result"""
         instance = self
         while instance != None:
             instance.visits += 1
-            instance.value += result[0] if gameState.isOnRedTeam(instance.player) else result[1]
+            instance.value += result if gameState.isOnRedTeam(instance.player) else -result
             instance = instance.parent
 
 
@@ -69,5 +69,7 @@ class Node:
         return chosenChild.move
 
 
-    def nextPlayer(self) -> int:
-        return (self.player+1) % 4
+    def nextPlayer(self, players:np.ndarray) -> int:
+        player_index = np.where(players == self.player)        
+        return (player_index[0][0]+1) % players.size
+    

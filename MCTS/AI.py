@@ -13,21 +13,16 @@ from MCTS.Node import Node
 def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: float = np.inf, sim_number: int = 100000000, cutoff: int = 0, model: nn.Module = None, device: torch.device = None) -> str:
     moves = rootState.getLegalActions(rootPlayer)
     removeStop(moves)
-
-    print("start")
-
-    starting_position = rootState.getAgentPosition(rootPlayer)
-    
-    
-    furthest_away_distance = 0
-    furthest_away_position = starting_position
-
-    max_depth = 0
-
-
     if not moves:
         return None
 
+    
+    starting_position = rootState.getAgentPosition(rootPlayer)
+    furthest_away_distance = 0
+    furthest_away_position = starting_position
+    max_depth = 0
+
+    players = np.arange(4)
     root = Node(rootPlayer)
     root.makeChildren(rootPlayer, moves)
 
@@ -44,8 +39,8 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
         currentState = GameState(rootState)
         current = root
         current_depth = 0
+        
         # Tree traverse
-
         while len(current.children) > 0:
             current_depth += 1
             current = current.selectChild(UCB1)
@@ -54,39 +49,31 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
 
             # returns a move if visits exceeds half of total simulations
             if current.visits >= 0.5*sim_number:
-                # printData(root)
+                printData(root)
                 return current.move
 
         if(current_depth > max_depth): max_depth = current_depth
 
         # Expand tree if current has been visited and isn't a terminal node
         if current.visits > 0 and not currentState.isOver():
-            if currentState.getAgentPosition(current.nextPlayer()):
-                moves = currentState.getLegalActions(current.nextPlayer())
+            if currentState.getAgentPosition(current.nextPlayer(players)):
+                moves = currentState.getLegalActions(current.nextPlayer(players))
                 removeStop(moves)
-                current.makeChildren(current.nextPlayer(), moves)
+                current.makeChildren(current.nextPlayer(players), moves)
                 current = current.selectChild(UCB1)
                 currentState = currentState.generateSuccessor(current.player, current.move)
                 
                 if(current.player == rootPlayer):
-                    # print(currentState.getAgentPosition(rootPlayer)-starting_position)
-                    new_pos = currentState.getAgentPosition(rootPlayer)
-                    difference = (new_pos[0]-starting_position[0],new_pos[1]-starting_position[1])
-                    dist = np.sqrt(difference[0]**2+difference[1]**2)
-                    # print(dist)
-                    if(dist>furthest_away_distance):
-                        furthest_away_position = currentState.getAgentPosition(rootPlayer)
-                        furthest_away_distance = dist
-
-                    # if(currentState.getAgentPosition(rootPlayer))
+                    furthest_away_distance, furthest_away_position = calculate_depth(
+                        currentState, starting_position, furthest_away_distance, furthest_away_position, rootPlayer)
 
             else:
                 moves = ['Stop']
-                current.makeChildren(current.nextPlayer(), moves)
+                current.makeChildren(current.nextPlayer(players), moves)
                 current = current.selectChild(UCB1)
 
         # Rollout
-        result = rolloutHeuristic(currentState, current.nextPlayer(), cutoff)
+        result = rolloutHeuristic(currentState, current.nextPlayer(players), cutoff)
 
         # Backpropagate
         current.backpropagate(rootState, result)
@@ -96,7 +83,7 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
     return root.chooseMove()
 
     
-def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -> np.ndarray:
+def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -> float:
     movesInRollout = 0
     # finds a random move and executes it if possible. as long as gameEnd is False and movesInRollout is less than cutoff
     while True:
@@ -118,23 +105,18 @@ def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -
         currentPlayer = nextPlayer(currentPlayer)
 
 
-def evaluationHeuristic(gameState: GameState) -> np.ndarray:
+def evaluationHeuristic(gameState: GameState) -> float:
     foodCapturedByYou = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
     foodCapturedByOpponent = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
     score = gameState.getScore()
 
-    
-
-    ### RESONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
+    ### REASONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
     heuristic = score + 1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
     # print(f"my captured {foodCapturedByYou}, opponent captured: {foodCapturedByOpponent}, score: {score}")
     
     # heuristic = np.tanh(heuristic)
-
-    
-
-    return np.array([heuristic, -heuristic])
+    return heuristic
 
 
 def removeStop(list:list) -> None:
@@ -142,6 +124,20 @@ def removeStop(list:list) -> None:
         list.remove('Stop')
     except ValueError:
         pass
+    
+    
+def calculate_depth(gameState:GameState, starting_position, furthest_away_distance:int, furthest_away_position:int, rootPlayer:int):
+    # print(currentState.getAgentPosition(rootPlayer)-starting_position)
+    new_pos = gameState.getAgentPosition(rootPlayer)
+    difference = (new_pos[0]-starting_position[0],new_pos[1]-starting_position[1])
+    dist = np.sqrt(difference[0]**2+difference[1]**2)
+    # print(dist)
+    if(dist>furthest_away_distance):
+        furthest_away_position = gameState.getAgentPosition(rootPlayer)
+        furthest_away_distance = dist
+    
+    return furthest_away_distance, furthest_away_position
+
 
 
 def loadModel(file: str = '/home/anton/skola/egen/pytorch/connect4/models/Connect4model200k.pth'):
