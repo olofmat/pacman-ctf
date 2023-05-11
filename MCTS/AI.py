@@ -4,49 +4,50 @@ import numpy as np
 
 from capture import GameState
 from MCTS.Node import Node
+from MCTS.MCTSData import MCTSData
 
 
-def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: float = np.inf, sim_number: int = 100000000) -> str:
-    moves = rootState.getLegalActions(rootPlayer)
+def MCTSfindMove(data:MCTSData) -> str:
+    moves = data.state.getLegalActions(data.player)
     removeStop(moves)
     if not moves:
         return None
     
-    starting_position = rootState.getAgentPosition(rootPlayer)
+    starting_position = data.state.getAgentPosition(data.player)
     furthest_away_distance = 0
     furthest_away_position = starting_position
     max_depth = 0
 
     players = []
     for i in range(4):
-        pos = rootState.getAgentPosition(i)
+        pos = data.state.getAgentPosition(i)
         if not pos: continue
-        if rootPlayer == i or not (rootState.isOnRedTeam(i) == rootState.isOnRedTeam(rootPlayer)) or (pos[0]-starting_position[0])**2 + (pos[1]-starting_position[1])**2 <= 25: players.append(i)
+        if data.player == i or not (data.state.isOnRedTeam(i) == data.state.isOnRedTeam(data.player)) or (pos[0]-starting_position[0])**2 + (pos[1]-starting_position[1])**2 <= 25: players.append(i)
     players = np.array(players)
 
-    root = Node(rootPlayer)
-    root.makeChildren(rootPlayer, moves)
+    root = Node(data.player)
+    root.makeChildren(data.player, moves)
 
     startTime = time.process_time()
-    for _ in range(sim_number):
-        if time.process_time() - startTime > sim_time:
+    for _ in range(data.sim_number):
+        if time.process_time() - startTime > data.sim_time:
             distance = [x-y for x, y in zip(furthest_away_position, starting_position)]
             print(f"maximum depth: {max_depth}, checked {distance} from starting position in {starting_position}")
             printData(root)
             return root.chooseMove()
 
-        currentState = GameState(rootState)
+        currentState = GameState(data.state)
         current = root
         current_depth = 0
         
         # Tree traverse
         while len(current.children) > 0:
             current_depth += 1
-            current = current.selectChild(UCB1)
+            current = current.selectChild(data.UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
 
             # returns a move if visits exceeds half of total simulations
-            if current.visits >= 0.5*sim_number:
+            if current.visits >= 0.5*data.sim_number:
                 printData(root)
                 return current.move
 
@@ -57,18 +58,18 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
             moves = currentState.getLegalActions(current.nextPlayer(players))
             removeStop(moves)
             current.makeChildren(current.nextPlayer(players), moves)
-            current = current.selectChild(UCB1)
+            current = current.selectChild(data.UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
             
-            if (current.player == rootPlayer):
+            if (current.player == data.player):
                 furthest_away_distance, furthest_away_position = calculate_depth(
-                    currentState, starting_position, furthest_away_distance, furthest_away_position, rootPlayer)
+                    currentState, starting_position, furthest_away_distance, furthest_away_position, data.player)
 
         # Rollout
         result = evaluationHeuristic(currentState)
 
         # Backpropagate
-        current.backpropagate(rootState, result)
+        current.backpropagate(data.state, result)
 
     printData(root)
     return root.chooseMove()
