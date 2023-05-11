@@ -1,16 +1,12 @@
 import time
 
 import numpy as np
-import torch
-import torch.nn as nn
 
 from capture import GameState
-from MCTS.Connect4Model import Model
-from MCTS.gameplay import nextPlayer, randomMove, result
 from MCTS.Node import Node
 
 
-def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: float = np.inf, sim_number: int = 100000000, cutoff: int = 0, model: nn.Module = None, device: torch.device = None) -> str:
+def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: float = np.inf, sim_number: int = 100000000) -> str:
     moves = rootState.getLegalActions(rootPlayer)
     removeStop(moves)
     if not moves:
@@ -69,32 +65,13 @@ def MCTSfindMove(rootState: GameState, rootPlayer: int, UCB1: float, sim_time: f
                     currentState, starting_position, furthest_away_distance, furthest_away_position, rootPlayer)
 
         # Rollout
-        result = rolloutHeuristic(currentState, current.nextPlayer(players), cutoff)
+        result = evaluationHeuristic(currentState)
 
         # Backpropagate
         current.backpropagate(rootState, result)
 
     printData(root)
     return root.chooseMove()
-
-    
-def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -> float:
-    movesInRollout = 0
-    # finds a random move and executes it if possible. as long as gameEnd is False and movesInRollout is less than cutoff
-    while True:
-        if currentState.isOver():
-            return result()
-
-        if movesInRollout >= cutoff:
-            return evaluationHeuristic(currentState)
-
-        moves = currentState.getLegalActions(currentPlayer)
-        removeStop(moves)
-        move = randomMove(moves)
-        currentState = currentState.generateSuccessor(currentPlayer, move)
-
-        movesInRollout += 1
-        currentPlayer = nextPlayer(currentPlayer)
 
 
 def evaluationHeuristic(gameState: GameState) -> float:
@@ -130,19 +107,6 @@ def calculate_depth(gameState:GameState, starting_position, furthest_away_distan
 
 
 
-def loadModel(file: str = '/home/anton/skola/egen/pytorch/connect4/models/Connect4model200k.pth'):
-    OUT_CHANNELS1, OUT_CHANNELS2, HIDDEN_SIZE1, HIDDEN_SIZE2 = 6, 6, 120, 72
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # device = torch.device('cpu')
-    model = Model(OUT_CHANNELS1, OUT_CHANNELS2,
-                  HIDDEN_SIZE1, HIDDEN_SIZE2).to(device)
-    model.load_state_dict(torch.load(file, map_location='cpu'))
-    model.to(device)
-    model.eval()
-
-    return model, device
-
-
 def printData(root: object) -> None:
     visits, val, p = root.visits, root.value, root.player
     print(
@@ -154,41 +118,21 @@ def printData(root: object) -> None:
     print(childVisits)
     print('')
     
-
-
-# def rolloutNN(currentState: np.ndarray, currentPlayer: int, row: int, move: int, model: nn.Module = None, device: torch.device = None, cutoff: bool = False) -> np.ndarray:
-#     # finds a random move and executes it if possible
+    
+# def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -> float:
+#     movesInRollout = 0
+#     # finds a random move and executes it if possible. as long as gameEnd is False and movesInRollout is less than cutoff
 #     while True:
-#         result = gameEnd(currentState, row, move)
-#         if result.any():
-#             return result
+#         if currentState.isOver():
+#             return result()
 
-#         if cutoff:
-#             return evaluationNN(currentState, currentPlayer, model, device)
+#         if movesInRollout >= cutoff:
+#             return evaluationHeuristic(currentState)
 
-#         moves = availableMoves(currentState)
-#         if not moves:
-#             return np.array([0, 0])
-
+#         moves = currentState.getLegalActions(currentPlayer)
+#         removeStop(moves)
 #         move = randomMove(moves)
-#         row = makeMove(currentState, currentPlayer, move)
+#         currentState = currentState.generateSuccessor(currentPlayer, move)
+
+#         movesInRollout += 1
 #         currentPlayer = nextPlayer(currentPlayer)
-
-
-# def evaluationNN(board: np.ndarray, currentPlayer: int, model: nn.Module, device: torch.device) -> np.ndarray:
-#     returnValue = 0
-#     if type(model) == list:
-#         for m in model:
-#             input = m.board2tensor(board, currentPlayer, device)
-#             prob = m(input)[0][0]
-#             prob = torch.softmax(prob, dim=0)
-#             returnValue += (prob[0]-prob[2]).item()
-#         returnValue /= len(model)
-#         return np.array([returnValue, -returnValue])
-
-#     else:
-#         input = model.board2tensor(board, currentPlayer, device)
-#         prob = model(input)[0][0]
-#         prob = torch.softmax(prob, dim=0)
-#         eval = (prob[0]-prob[2]).item()
-#         return np.array([eval, -eval])
