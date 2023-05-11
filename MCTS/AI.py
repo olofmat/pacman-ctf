@@ -17,25 +17,7 @@ def MCTSfindMove(data:MCTSData) -> str:
     furthest_away_distance = 0
     furthest_away_position = starting_position
     max_depth = 0
-
-    players = []
-    for i in range(4):
-        pos = data.state.getAgentPosition(i)
-        if not pos: continue
-        # if data.player == i or (((pos[0]-starting_position[0])**2 + (pos[1]-starting_position[1])**2 <= 25) and (data.state.isOnRedTeam(i) != data.state.isOnRedTeam(data.player))): players.append(i)
-        if data.player == i or not (data.state.isOnRedTeam(i) == data.state.isOnRedTeam(data.player)) or data.distances[pos[0]][pos[1]][starting_position[0]][starting_position[1]] <= 3: players.append(i)
-        # if data.player == i or not (data.state.isOnRedTeam(i) == data.state.isOnRedTeam(data.player)) or (pos[0]-starting_position[0])**2 + (pos[1]-starting_position[1])**2 <= 9: players.append(i)
-    players = np.array(players)
     
-    if data.saw_last_round == False and len(players) == 1:
-        data.root = data.root.chooseBestChild()
-        print(f"player {data.player} is keeping tree")
-    else:
-        data.root = Node(data.player)
-        data.root.makeChildren(data.player, moves)
-    
-    data.saw_last_round = False if len(players) == 1 else True
-
     startTime = time.process_time()
     for _ in range(data.sim_number):
         if time.process_time() - startTime > data.sim_time:
@@ -63,9 +45,9 @@ def MCTSfindMove(data:MCTSData) -> str:
 
         # Expand tree if current has been visited and isn't a terminal node
         if current.visits > 0 and not currentState.isOver():
-            moves = currentState.getLegalActions(current.nextPlayer(players))
+            moves = currentState.getLegalActions(current.nextPlayer(data.players))
             removeStop(moves)
-            current.makeChildren(current.nextPlayer(players), moves)
+            current.makeChildren(current.nextPlayer(data.players), moves)
             current = current.selectChild(data.UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
             
@@ -74,7 +56,7 @@ def MCTSfindMove(data:MCTSData) -> str:
                     currentState, starting_position, furthest_away_distance, furthest_away_position, data.player)
 
         # Rollout
-        result = evaluationHeuristic(currentState)
+        result = evaluationHeuristic(currentState, data)
 
         # Backpropagate
         current.backpropagate(data.state, result)
@@ -83,14 +65,24 @@ def MCTSfindMove(data:MCTSData) -> str:
     return data.root.chooseBestChild().move
 
 
-def evaluationHeuristic(gameState: GameState) -> float:
+def evaluationHeuristic(gameState: GameState, data:MCTSData) -> float:
     foodCapturedByYou = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
     foodCapturedByOpponent = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
     score = gameState.getScore()
+    
+    data.get_food_locations()
+    my_pos = gameState.getAgentPosition(data.player)
+    food_distances = np.zeros(len(data.food), np.int32)
+    for i, food_location in enumerate(data.food):
+        food_distances[i] = data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
+    
+    closest_food = 0
+    if food_distances.any():
+        closest_food = food_distances.min()
 
     ### REASONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
-    heuristic = score + 1/4*foodCapturedByYou - 1/4*foodCapturedByOpponent
+    heuristic = score + foodCapturedByYou/4 - foodCapturedByOpponent/4 + (1 - closest_food/76)/8
     # print(f"my captured {foodCapturedByYou}, opponent captured: {foodCapturedByOpponent}, score: {score}")
     
     # heuristic = np.tanh(heuristic)

@@ -22,6 +22,9 @@ from MCTS.MCTSData import MCTSData
 import heapq
 from typing import Tuple
 import numpy as np
+import sys
+from MCTS.Node import Node
+np.set_printoptions(threshold=sys.maxsize)
 
 #################
 # Team creation #
@@ -82,17 +85,40 @@ class DummyAgent(CaptureAgent):
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
     
     CaptureAgent.registerInitialState(self, gameState)
-    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.9)
-    self.data.distances = self.calculate_distances()
+    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.1)
+    # self.data.distances = self.calculate_distances()
+    # np.save("distances.npy", self.data.distances)
+    self.data.distances = np.load("distances.npy")
     
     middle = (15, 7)
     self.moves = self.movesToPoint(self.data.state.getAgentPosition(self.index), middle)
 
 
+
   def chooseAction(self, gameState:GameState) -> str:
-    self.data.state = gameState
     if self.moves:
         return self.moves.pop(0)
+
+    my_pos = gameState.getAgentPosition(self.data.player)
+    players = []
+    for i in range(4):
+        pos = gameState.getAgentPosition(i)
+        if not pos: continue
+        if self.data.player == i or self.data.distances[pos[0]][pos[1]][my_pos[0]][my_pos[1]] <= 5: players.append(i)
+    players = np.array(players)
+    self.data.players = players
+    
+    if self.data.only_me_in_tree and len(players) == 1:
+        self.data.root = self.data.root.chooseBestChild()
+        self.data.root.parent = None
+        self.data.state = self.data.state.generateSuccessor(self.data.player, self.data.root.move)
+    else:
+        self.data.state = gameState
+        self.data.root = Node(self.data.player)
+        self.data.root.makeChildren(self.data.player, gameState.getLegalActions(self.data.player))
+    
+    self.data.only_me_in_tree = True if len(players) == 1 else False
+
     return MCTSfindMove(self.data)
 
 
@@ -138,13 +164,13 @@ class DummyAgent(CaptureAgent):
 
 
   def calculate_distances(self) -> np.ndarray:
-    distance_matrix = np.zeros((self.WALLS.width, self.WALLS.height, self.WALLS.width, self.WALLS.height))
+    distance_matrix = np.zeros((self.WALLS.width, self.WALLS.height, self.WALLS.width, self.WALLS.height), np.int32)
 
     for y_start in range(self.WALLS.height):
         for x_start in range(self.WALLS.width):
             if self.WALLS[x_start][y_start]: continue
-            for y in range(y_start, self.WALLS.height):
-                for x in range(x_start, self.WALLS.width):
+            for y in range(self.WALLS.height):
+                for x in range(self.WALLS.width):
                     if (x_start, y_start) == (x, y): continue
                     if self.WALLS[x][y]: continue
 
