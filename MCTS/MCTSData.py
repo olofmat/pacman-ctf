@@ -10,6 +10,11 @@ class MCTSData:
         self.UCB1 = UCB1
         self.sim_time = sim_time
         self.sim_number = sim_number
-        self.distances = np.zeros(0)
         
+        self.distances: np.ndarray
+        
+        self.root = Node(player)
+        self.root.makeChildren(player, state.getLegalActions(player))
+        
+        self.saw_last_round = True
         

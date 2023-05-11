@@ -22,7 +22,7 @@ class Node:
         random.shuffle(self.children)
 
 
-    def selectChild(self, C: float) -> object:
+    def selectChild(self, C: float) -> "Node":
         """Uses UCB1 to pick child node"""
         # if node doesn't have children, return self
         if len(self.children) == 0:
@@ -54,7 +54,7 @@ class Node:
             instance = instance.parent
 
 
-    def chooseMove(self) -> int:
+    def chooseBestChild(self) -> "Node":
         """Chooses most promising move from the list of children"""
         # if node doesn't have children, make no move
         if len(self.children) == 0:
@@ -66,7 +66,7 @@ class Node:
         maxIndex = visits.index(maxVisits)
 
         chosenChild = self.children[maxIndex]
-        return chosenChild.move
+        return chosenChild
 
 
     def nextPlayer(self, players:np.ndarray) -> int:

@@ -83,7 +83,7 @@ class DummyAgent(CaptureAgent):
     
     CaptureAgent.registerInitialState(self, gameState)
     self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.9)
-    # self.data.distances = self.calculate_distances()
+    self.data.distances = self.calculate_distances()
     
     middle = (15, 7)
     self.moves = self.movesToPoint(self.data.state.getAgentPosition(self.index), middle)

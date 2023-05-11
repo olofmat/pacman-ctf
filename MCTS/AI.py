@@ -22,22 +22,30 @@ def MCTSfindMove(data:MCTSData) -> str:
     for i in range(4):
         pos = data.state.getAgentPosition(i)
         if not pos: continue
-        if data.player == i or not (data.state.isOnRedTeam(i) == data.state.isOnRedTeam(data.player)) or (pos[0]-starting_position[0])**2 + (pos[1]-starting_position[1])**2 <= 25: players.append(i)
+        # if data.player == i or (((pos[0]-starting_position[0])**2 + (pos[1]-starting_position[1])**2 <= 25) and (data.state.isOnRedTeam(i) != data.state.isOnRedTeam(data.player))): players.append(i)
+        if data.player == i or not (data.state.isOnRedTeam(i) == data.state.isOnRedTeam(data.player)) or data.distances[pos[0]][pos[1]][starting_position[0]][starting_position[1]] <= 3: players.append(i)
+        # if data.player == i or not (data.state.isOnRedTeam(i) == data.state.isOnRedTeam(data.player)) or (pos[0]-starting_position[0])**2 + (pos[1]-starting_position[1])**2 <= 9: players.append(i)
     players = np.array(players)
-
-    root = Node(data.player)
-    root.makeChildren(data.player, moves)
+    
+    if data.saw_last_round == False and len(players) == 1:
+        data.root = data.root.chooseBestChild()
+        print(f"player {data.player} is keeping tree")
+    else:
+        data.root = Node(data.player)
+        data.root.makeChildren(data.player, moves)
+    
+    data.saw_last_round = False if len(players) == 1 else True
 
     startTime = time.process_time()
     for _ in range(data.sim_number):
         if time.process_time() - startTime > data.sim_time:
             distance = [x-y for x, y in zip(furthest_away_position, starting_position)]
             print(f"maximum depth: {max_depth}, checked {distance} from starting position in {starting_position}")
-            printData(root)
-            return root.chooseMove()
+            printData(data.root)
+            return data.root.chooseBestChild().move
 
         currentState = GameState(data.state)
-        current = root
+        current = data.root
         current_depth = 0
         
         # Tree traverse
@@ -48,7 +56,7 @@ def MCTSfindMove(data:MCTSData) -> str:
 
             # returns a move if visits exceeds half of total simulations
             if current.visits >= 0.5*data.sim_number:
-                printData(root)
+                printData(data.root)
                 return current.move
 
         if (current_depth > max_depth): max_depth = current_depth
@@ -71,8 +79,8 @@ def MCTSfindMove(data:MCTSData) -> str:
         # Backpropagate
         current.backpropagate(data.state, result)
 
-    printData(root)
-    return root.chooseMove()
+    printData(data.root)
+    return data.root.chooseBestChild().move
 
 
 def evaluationHeuristic(gameState: GameState) -> float:
@@ -108,7 +116,7 @@ def calculate_depth(gameState:GameState, starting_position, furthest_away_distan
 
 
 
-def printData(root: object) -> None:
+def printData(root: Node) -> None:
     visits, val, p = root.visits, root.value, root.player
     print(
         f'root; player: {p}, rollouts: {visits}, value: {round(val*1, 2)}, vinstprocent: {round((visits+val)*50/visits, 2)}%')
