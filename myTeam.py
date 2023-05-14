@@ -12,18 +12,23 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-from captureAgents import CaptureAgent
-from capture import GameState
-import random, time, util
-from game import Directions, Actions
-import game
-from MCTS.AI import MCTSfindMove
-from MCTS.MCTSData import MCTSData
 import heapq
-from typing import Tuple
-import numpy as np
+import random
 import sys
+import time
+from typing import Tuple
+
+import numpy as np
+
+import game
+import util
+from capture import GameState
+from captureAgents import CaptureAgent
+from game import Actions, Directions
+from MCTS.AI import MCTSfindMove, removeStop
+from MCTS.MCTSData import MCTSData
 from MCTS.Node import Node
+
 np.set_printoptions(threshold=sys.maxsize)
 
 #################
@@ -63,7 +68,7 @@ class DummyAgent(CaptureAgent):
 
   def registerInitialState(self, gameState:GameState):
     """
-    This method handles the initial setup of the
+    This method handles the initial setup of thegameState.getLegalActions(self.data.player)
     agent to populate useful fields (such as what team
     we're on).
 
@@ -85,13 +90,14 @@ class DummyAgent(CaptureAgent):
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
     
     CaptureAgent.registerInitialState(self, gameState)
-    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.1)
+    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.9)
     # self.data.distances = self.calculate_distances()
     # np.save("distances.npy", self.data.distances)
     self.data.distances = np.load("distances.npy")
     
-    middle = (15, 7)
-    self.moves = self.movesToPoint(self.data.state.getAgentPosition(self.index), middle)
+    self.start_pos = gameState.getAgentPosition(self.index)
+    self.middle = (15, 7)
+    self.moves = self.movesToPoint(self.start_pos, self.middle)
 
 
 
@@ -104,19 +110,15 @@ class DummyAgent(CaptureAgent):
     for i in range(4):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
-        if self.data.player == i or self.data.distances[pos[0]][pos[1]][my_pos[0]][my_pos[1]] <= 5: players.append(i)
+        threshold = -1 if gameState.isOnRedTeam(self.index) == gameState.isOnRedTeam(i) else 10
+        if self.data.player == i or self.data.distances[pos[0]][pos[1]][my_pos[0]][my_pos[1]] <= threshold: players.append(i)
     players = np.array(players)
     self.data.players = players
     
     if self.data.only_me_in_tree and len(players) == 1:
-        self.data.root = self.data.root.chooseBestChild()
-        self.data.root.parent = None
-        self.data.state = self.data.state.generateSuccessor(self.data.player, self.data.root.move)
+        self.keep_tree()
     else:
-        self.data.state = gameState
-        self.data.root = Node(self.data.player)
-        self.data.root.makeChildren(self.data.player, gameState.getLegalActions(self.data.player))
-    
+        self.discard_tree(gameState)
     self.data.only_me_in_tree = True if len(players) == 1 else False
 
     return MCTSfindMove(self.data)
@@ -162,6 +164,18 @@ class DummyAgent(CaptureAgent):
 
     return possible
 
+
+  def keep_tree(self):
+    self.data.root = self.data.root.chooseBestChild()
+    self.data.root.parent = None
+    self.data.state = self.data.state.generateSuccessor(self.data.player, self.data.root.move)
+
+  def discard_tree(self, gameState:GameState):
+    self.data.state = gameState
+    self.data.root = Node(self.data.player)
+    moves = gameState.getLegalActions(self.data.player)
+    removeStop(moves)
+    self.data.root.makeChildren(self.data.player, moves)
 
   def calculate_distances(self) -> np.ndarray:
     distance_matrix = np.zeros((self.WALLS.width, self.WALLS.height, self.WALLS.width, self.WALLS.height), np.int32)

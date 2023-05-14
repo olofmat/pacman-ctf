@@ -21,7 +21,7 @@ class MCTSData:
 
 
     def get_food_locations(self) -> None:
-        got_food = self.state.getBlueFood()
+        got_food = self.state.getBlueFood() if self.state.isOnRedTeam(self.player) else self.state.getRedFood()
         self.food = []
         for x in range(got_food.width):
             for y in range(got_food.height):

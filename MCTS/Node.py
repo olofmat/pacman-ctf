@@ -45,12 +45,12 @@ class Node:
         return self.children[maxIndex]
 
 
-    def backpropagate(self, gameState:GameState, result: float) -> None:
+    def backpropagate(self, gameState:GameState, result: tuple) -> None:
         """Updates value and visits according to result"""
         instance = self
         while instance != None:
             instance.visits += 1
-            instance.value += result if gameState.isOnRedTeam(instance.player) else -result
+            instance.value += result[0] if gameState.isOnRedTeam(instance.player) else result[1]
             instance = instance.parent
 
 
@@ -58,7 +58,7 @@ class Node:
         """Chooses most promising move from the list of children"""
         # if node doesn't have children, make no move
         if len(self.children) == 0:
-            return self.move
+            return self
 
         # finds child with most visits and returns it
         visits = [child.visits for child in self.children]
