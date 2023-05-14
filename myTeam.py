@@ -118,12 +118,13 @@ class DummyAgent(CaptureAgent):
 
   def chooseAction(self, gameState:GameState) -> str:
     
+    print("start")
+    my_pos = gameState.getAgentPosition(self.data.player)
+    self.update_distributions(gameState,my_pos)
     
-    self.update_distributions(gameState)
     if self.moves:
         return self.moves.pop(0)
 
-    my_pos = gameState.getAgentPosition(self.data.player)
     players = []
     for i in range(4):
         pos = gameState.getAgentPosition(i)
@@ -213,20 +214,31 @@ class DummyAgent(CaptureAgent):
     
     return distance_matrix
   
-  def update_distributions(self,gameState:GameState):
-     
-     for i, distribution in enumerate(self.distributions):
+  def update_distributions(self,gameState:GameState,my_pos):
+    distances = gameState.getAgentDistances()
+    enemies = self.getOpponents(gameState)
+    
+    
+    for i, distribution in enumerate(self.distributions):
+        distance = distances[enemies[i]]
+        print(distance)
         positions_to_add = []
         for position in distribution.keys():
-          #  print(position)
-           for direction in self.DIR_VEC2STR:
+           if self.distributions[i][position] == 1:          #  print(position)
+            for direction in self.DIR_VEC2STR:
               new_pos = (position[0]+direction[0],position[1]+direction[1])
               if (new_pos[0]>=0 and new_pos[0] <= 30) and (new_pos[1]>=0 and new_pos[1] <= 14) and not gameState.hasWall(new_pos[0],new_pos[1]):
-                positions_to_add.append(new_pos)
+                truedistance = np.sqrt(np.power(my_pos[0]-new_pos[0],2)+np.power(my_pos[1]-new_pos[1],2))
+                print(f"{truedistance} & {distance}")
+                if(gameState.getDistanceProb(truedistance,distance) != 0):
+                
+                  positions_to_add.append(new_pos)
+        
         for newPosition in positions_to_add:
-           self.distributions[i][newPosition] = 1
-      
-     self.displayDistributionsOverPositions(self.distributions)
+          self.distributions[i][newPosition] = 1
+          #  print(newPosition)
+  
+    self.displayDistributionsOverPositions(self.distributions)
 
 
     
