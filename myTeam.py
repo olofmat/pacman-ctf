@@ -97,7 +97,7 @@ class DummyAgent(CaptureAgent):
     
     self.start_pos = gameState.getAgentPosition(self.index)
     self.middle = (15, 7)
-    self.moves = self.movesToPoint(self.start_pos, self.middle)
+    self.moves = self.movesToPoint(self.start_pos, self.start_pos)
 
 
 
