@@ -84,9 +84,9 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData) -> tuple:
     
     heuristic_red = score + foodCapturedByRed/4 - foodCapturedByBlue/4 + (1 - closest_food/76)*rf
     heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + (1 - closest_food/76)*bf
-    
-    heuristic_red = np.tanh(heuristic_red)
-    heuristic_blue = np.tanh(heuristic_blue)
+    # print(f" {score}, {foodCapturedByRed/4}, {foodCapturedByBlue/4}, {(1 - closest_food/76)*rf}, {heuristic_red}")
+    # heuristic_red = np.tanh(heuristic_red)
+    # heuristic_blue = np.tanh(heuristic_blue)
     return heuristic_red, heuristic_blue
 
 
