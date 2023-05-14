@@ -7,10 +7,10 @@ class Node:
     def __init__(self, player: int, move:str=None, parent=None) -> None:
         self.value = np.array(0, np.float32)
         self.visits = np.array(0, np.int32)
-        self.parent = parent
-        self.children = []
-        self.move = move
-        self.player = player                    # self.player makes self.move
+        self.parent:int = parent
+        self.children:list = []
+        self.move:str = move
+        self.player:int = player                    # self.player makes self.move
 
 
     def makeChildren(self, player: int, moves: list) -> None:
