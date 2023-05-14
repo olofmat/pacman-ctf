@@ -8,6 +8,11 @@ from MCTS.MCTSData import MCTSData
 
 
 def MCTSfindMove(data:MCTSData) -> str:
+    moves = data.state.getLegalActions(data.player)
+    removeStop(moves)
+    if not moves:
+        return None
+    
     starting_position = data.state.getAgentPosition(data.player)
     furthest_away_distance = 0
     furthest_away_position = starting_position
