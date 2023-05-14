@@ -12,18 +12,23 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-from captureAgents import CaptureAgent
-from capture import GameState
-import random, time, util
-from game import Directions, Actions
-import game
-from MCTS.AI import MCTSfindMove
-from MCTS.MCTSData import MCTSData
 import heapq
-from typing import Tuple
-import numpy as np
+import random
 import sys
+import time
+from typing import Tuple
+
+import numpy as np
+
+import game
+import util
+from capture import GameState
+from captureAgents import CaptureAgent
+from game import Actions, Directions
+from MCTS.AI import MCTSfindMove, removeStop
+from MCTS.MCTSData import MCTSData
 from MCTS.Node import Node
+
 np.set_printoptions(threshold=sys.maxsize)
 
 #################
@@ -90,36 +95,55 @@ class DummyAgent(CaptureAgent):
     # np.save("distances.npy", self.data.distances)
     self.data.distances = np.load("distances.npy")
     
-    middle = (15, 7)
-    self.moves = self.movesToPoint(self.data.state.getAgentPosition(self.index), middle)
+    self.start_pos = gameState.getAgentPosition(self.index)
+    self.middle = (15, 7)
+    self.moves = self.movesToPoint(self.start_pos, self.middle)
 
 
 
   def chooseAction(self, gameState:GameState) -> str:
-    if self.moves:
-        return self.moves.pop(0)
-
     my_pos = gameState.getAgentPosition(self.data.player)
+    self.moves = []
+        
     players = []
     for i in range(4):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
-        if self.data.player == i or self.data.distances[pos[0]][pos[1]][my_pos[0]][my_pos[1]] <= 5: players.append(i)
+        threshold = 100 if gameState.isOnRedTeam(self.index) and not gameState.isOnRedTeam(i) else -1
+        if self.data.player == i or self.data.distances[pos[0]][pos[1]][my_pos[0]][my_pos[1]] <= threshold: players.append(i)
     players = np.array(players)
     self.data.players = players
     
     if self.data.only_me_in_tree and len(players) == 1:
-        self.data.root = self.data.root.chooseBestChild()
-        self.data.root.parent = None
-        self.data.state = self.data.state.generateSuccessor(self.data.player, self.data.root.move)
+        self.keep_tree()
     else:
-        self.data.state = gameState
-        self.data.root = Node(self.data.player)
-        self.data.root.makeChildren(self.data.player, gameState.getLegalActions(self.data.player))
-    
+        self.discard_tree(gameState)
     self.data.only_me_in_tree = True if len(players) == 1 else False
+    
+    if my_pos[0] == self.start_pos[0]:
+        self.moves = self.movesToPoint(my_pos, self.middle)
+        self.data.only_me_in_tree = False
+        return self.moves.pop(0)
+    
+    mcts_move = MCTSfindMove(self.data)
+        
+    child_visits = [child.visits for child in self.data.root.children]
+    if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 10): 
+        self.data.get_food_locations()
+        closest_food_dist = 100
+        closest_food = ()
+        if self.index == 0: food = self.data.food[:len(self.data.food)//2]
+        if self.index == 2: food = self.data.food[len(self.data.food)//2:]
+        for food_location in food:
+            if self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]] < closest_food_dist and food_location != my_pos: 
+                closest_food_dist = self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
+                closest_food = food_location
+        self.moves = self.movesToPoint(my_pos, closest_food)
+        # self.data.only_me_in_tree = False
+        return self.moves.pop(0)
+    print("MCTS MOVE")
 
-    return MCTSfindMove(self.data)
+    return mcts_move
 
 
   def movesToPoint(self, init_pos:Tuple[int], point:Tuple[int]) -> list[str]:
@@ -163,6 +187,20 @@ class DummyAgent(CaptureAgent):
     return possible
 
 
+  def keep_tree(self):
+    self.data.root = self.data.root.chooseBestChild()
+    self.data.root.parent = None
+    self.data.state = self.data.state.generateSuccessor(self.data.player, self.data.root.move)
+    
+  def discard_tree(self, gameState:GameState):
+    self.data.state = gameState
+    self.data.root = Node(self.data.player)
+    moves = gameState.getLegalActions(self.data.player)
+    removeStop(moves)
+    self.data.root.makeChildren(self.data.player, moves)
+      
+
+
   def calculate_distances(self) -> np.ndarray:
     distance_matrix = np.zeros((self.WALLS.width, self.WALLS.height, self.WALLS.width, self.WALLS.height), np.int32)
 
@@ -172,7 +210,7 @@ class DummyAgent(CaptureAgent):
             for y in range(self.WALLS.height):
                 for x in range(self.WALLS.width):
                     if (x_start, y_start) == (x, y): continue
-                    if self.WALLS[x][y]: continue
+                    if self.WALLS[x][y] or distance_matrix[x_start][y_start][x][y]: continue
 
                     path_length = len(self.movesToPoint((x_start, y_start), (x, y)))
 

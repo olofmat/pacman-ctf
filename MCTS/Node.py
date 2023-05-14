@@ -7,10 +7,10 @@ class Node:
     def __init__(self, player: int, move:str=None, parent=None) -> None:
         self.value = np.array(0, np.float32)
         self.visits = np.array(0, np.int32)
-        self.parent = parent
-        self.children = []
-        self.move = move
-        self.player = player                    # self.player makes self.move
+        self.parent:int = parent
+        self.children:list = []
+        self.move:str = move
+        self.player:int = player                    # self.player makes self.move
 
 
     def makeChildren(self, player: int, moves: list) -> None:
@@ -45,12 +45,12 @@ class Node:
         return self.children[maxIndex]
 
 
-    def backpropagate(self, gameState:GameState, result: float) -> None:
+    def backpropagate(self, gameState:GameState, result: tuple) -> None:
         """Updates value and visits according to result"""
         instance = self
         while instance != None:
             instance.visits += 1
-            instance.value += result if gameState.isOnRedTeam(instance.player) else -result
+            instance.value += result[0] if gameState.isOnRedTeam(instance.player) else result[1]
             instance = instance.parent
 
 
@@ -58,7 +58,7 @@ class Node:
         """Chooses most promising move from the list of children"""
         # if node doesn't have children, make no move
         if len(self.children) == 0:
-            return self.move
+            return self
 
         # finds child with most visits and returns it
         visits = [child.visits for child in self.children]

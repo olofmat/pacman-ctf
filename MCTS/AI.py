@@ -8,11 +8,6 @@ from MCTS.MCTSData import MCTSData
 
 
 def MCTSfindMove(data:MCTSData) -> str:
-    moves = data.state.getLegalActions(data.player)
-    removeStop(moves)
-    if not moves:
-        return None
-    
     starting_position = data.state.getAgentPosition(data.player)
     furthest_away_distance = 0
     furthest_away_position = starting_position
@@ -65,28 +60,29 @@ def MCTSfindMove(data:MCTSData) -> str:
     return data.root.chooseBestChild().move
 
 
-def evaluationHeuristic(gameState: GameState, data:MCTSData) -> float:
-    foodCapturedByYou = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
-    foodCapturedByOpponent = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
+def evaluationHeuristic(gameState: GameState, data:MCTSData) -> tuple:
+    foodCapturedByRed = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
+    foodCapturedByBlue = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
     score = gameState.getScore()
     
     data.get_food_locations()
     my_pos = gameState.getAgentPosition(data.player)
-    food_distances = np.zeros(len(data.food), np.int32)
-    for i, food_location in enumerate(data.food):
-        food_distances[i] = data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
-    
     closest_food = 0
-    if food_distances.any():
-        closest_food = food_distances.min()
-
+    for food_location in data.food:
+        closest_food = min(closest_food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
+    
     ### REASONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
-    heuristic = score + foodCapturedByYou/4 - foodCapturedByOpponent/4 + (1 - closest_food/76)/8
-    # print(f"my captured {foodCapturedByYou}, opponent captured: {foodCapturedByOpponent}, score: {score}")
     
-    # heuristic = np.tanh(heuristic)
-    return heuristic
+    rf, bf = 1/10, 0
+    if not gameState.isOnRedTeam(data.player): rf, bf = bf, rf
+    
+    heuristic_red = score + foodCapturedByRed/4 - foodCapturedByBlue/4 + (1 - closest_food/76)*rf
+    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + (1 - closest_food/76)*bf
+    
+    heuristic_red = np.tanh(heuristic_red)
+    heuristic_blue = np.tanh(heuristic_blue)
+    return heuristic_red, heuristic_blue
 
 
 def removeStop(list:list) -> None:
