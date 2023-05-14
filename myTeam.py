@@ -53,6 +53,8 @@ def createTeam(firstIndex, secondIndex, isRed,
   """
 
 
+
+
   # ESTIMATING
   # The following line is an example only; feel free to change it.
   return [eval(first)(firstIndex), eval(second)(secondIndex)]
@@ -91,6 +93,8 @@ class DummyAgent(CaptureAgent):
     self.DIR_STR2VEC = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0)}
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
     
+    
+
     CaptureAgent.registerInitialState(self, gameState)
     self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.9)
     # self.data.distances = self.calculate_distances()
@@ -102,8 +106,20 @@ class DummyAgent(CaptureAgent):
     self.moves = self.movesToPoint(self.start_pos, self.middle)
 
 
+    self.distributions = []
+    for opponent in self.getOpponents(gameState):
+      position = gameState.getInitialAgentPosition(opponent)
+      self.distributions.append(util.Counter())
+      self.distributions[-1][position] = 1
+      
+
+
+
 
   def chooseAction(self, gameState:GameState) -> str:
+    
+    
+    self.update_distributions(gameState)
     if self.moves:
         return self.moves.pop(0)
 
@@ -194,4 +210,23 @@ class DummyAgent(CaptureAgent):
 
                     distance_matrix[x_start][y_start][x][y] = path_length
                     distance_matrix[x][y][x_start][y_start] = path_length
+    
     return distance_matrix
+  
+  def update_distributions(self,gameState:GameState):
+     
+     for i, distribution in enumerate(self.distributions):
+        positions_to_add = []
+        for position in distribution.keys():
+          #  print(position)
+           for direction in self.DIR_VEC2STR:
+              new_pos = (position[0]+direction[0],position[1]+direction[1])
+              if (new_pos[0]>=0 and new_pos[0] <= 30) and (new_pos[1]>=0 and new_pos[1] <= 14) and not gameState.hasWall(new_pos[0],new_pos[1]):
+                positions_to_add.append(new_pos)
+        for newPosition in positions_to_add:
+           self.distributions[i][newPosition] = 1
+      
+     self.displayDistributionsOverPositions(self.distributions)
+
+
+    
