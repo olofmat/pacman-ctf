@@ -220,14 +220,23 @@ class DummyAgent(CaptureAgent):
     return distance_matrix
   
   def update_distributions(self,gameState:GameState,my_pos):
+
     distances = gameState.getAgentDistances()
-    # print(distances)
+
+    
+    
     enemies = self.getOpponents(gameState)
     
     
     for i, distribution in enumerate(self.distributions):
         # print(enemies[i])
-        # print(distances)
+        
+
+        if gameState.getAgentPosition(enemies[i]) != None:
+              
+              self.distributions[i] = util.Counter()
+              self.distributions[i][gameState.getAgentPosition(enemies[i])] = 1
+              continue
         measured_distance = distances[enemies[i]]
         
         positions_to_add = []
@@ -259,8 +268,6 @@ class DummyAgent(CaptureAgent):
                 
                   self.distributions[i][position] = 0
         
-        for newPosition in positions_to_add:
-          self.distributions[i][newPosition] = 1
     
     self.displayDistributionsOverPositions(self.distributions)
 
