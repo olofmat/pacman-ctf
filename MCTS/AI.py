@@ -68,6 +68,9 @@ def MCTSfindMove(data:MCTSData) -> str:
 def evaluationHeuristic(gameState: GameState, data:MCTSData) -> tuple:
     foodCapturedByRed = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
     foodCapturedByBlue = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
+def evaluationHeuristic(gameState: GameState, data:MCTSData) -> tuple:
+    foodCapturedByRed = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
+    foodCapturedByBlue = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
     score = gameState.getScore()
     
     data.get_food_locations()
@@ -78,6 +81,15 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData) -> tuple:
     ### REASONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
     
+    rf, bf = 1/8, 0
+    if not gameState.isOnRedTeam(data.player): rf, bf = bf, rf
+    
+    heuristic_red = score + foodCapturedByRed/4 - foodCapturedByBlue/4 + (1 - closest_food/76)*rf
+    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + (1 - closest_food/76)*bf
+    # print(f" {score}, {foodCapturedByRed/4}, {foodCapturedByBlue/4}, {(1 - closest_food/76)*rf}, {heuristic_red}")
+    # heuristic_red = np.tanh(heuristic_red)
+    # heuristic_blue = np.tanh(heuristic_blue)
+    return heuristic_red, heuristic_blue
     rf, bf = 1/8, 0
     if not gameState.isOnRedTeam(data.player): rf, bf = bf, rf
     

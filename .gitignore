@@ -3,3 +3,4 @@ score
 *.pyc
 __pycache__
 test.py
+other_group

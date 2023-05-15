@@ -96,32 +96,48 @@ class DummyAgent(CaptureAgent):
     self.data.distances = np.load("distances.npy")
     
     self.start_pos = gameState.getAgentPosition(self.index)
-    self.middle = (15, 7)
-    self.moves = self.movesToPoint(self.start_pos, self.middle)
-
 
 
   def chooseAction(self, gameState:GameState) -> str:
-    if self.moves:
-        return self.moves.pop(0)
-
     my_pos = gameState.getAgentPosition(self.data.player)
+    self.moves = []
+        
     players = []
     for i in range(4):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
-        threshold = -1 if gameState.isOnRedTeam(self.index) == gameState.isOnRedTeam(i) else 10
-        if self.data.player == i or self.data.distances[pos[0]][pos[1]][my_pos[0]][my_pos[1]] <= threshold: players.append(i)
+        if self.data.player == i or self.data.distances[pos[0]][pos[1]][my_pos[0]][my_pos[1]] <= 5: players.append(i)
     players = np.array(players)
     self.data.players = players
     
-    if self.data.only_me_in_tree and len(players) == 1:
-        self.keep_tree()
-    else:
-        self.discard_tree(gameState)
+    if self.data.only_me_in_tree and len(players) == 1: self.keep_tree()
+    else: self.discard_tree(gameState)
     self.data.only_me_in_tree = True if len(players) == 1 else False
+    
+    if my_pos[0] == self.start_pos[0]:
+        self.moves = self.movesToPoint(my_pos, self.middle)
+        self.data.only_me_in_tree = False
+        return self.moves.pop(0)
+    
+    mcts_move = MCTSfindMove(self.data)
+        
+    child_visits = [child.visits for child in self.data.root.children]
+    if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 10): 
+        self.data.get_food_locations()
+        closest_food_dist = 100
+        closest_food = ()
+        if self.index == 0: food = self.data.food[:len(self.data.food)//2]
+        if self.index == 2: food = self.data.food[len(self.data.food)//2:]
+        for food_location in food:
+            if self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]] < closest_food_dist and food_location != my_pos: 
+                closest_food_dist = self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
+                closest_food = food_location
+        self.moves = self.movesToPoint(my_pos, closest_food)
+        # self.data.only_me_in_tree = False
+        return self.moves.pop(0)
+    print("MCTS MOVE")
 
-    return MCTSfindMove(self.data)
+    return mcts_move
 
 
   def movesToPoint(self, init_pos:Tuple[int], point:Tuple[int]) -> list[str]:
@@ -186,7 +202,7 @@ class DummyAgent(CaptureAgent):
             for y in range(self.WALLS.height):
                 for x in range(self.WALLS.width):
                     if (x_start, y_start) == (x, y): continue
-                    if self.WALLS[x][y]: continue
+                    if self.WALLS[x][y] or distance_matrix[x_start][y_start][x][y]: continue
 
                     path_length = len(self.movesToPoint((x_start, y_start), (x, y)))
 
