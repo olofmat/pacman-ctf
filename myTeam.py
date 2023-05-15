@@ -111,8 +111,11 @@ class DummyAgent(CaptureAgent):
       position = gameState.getInitialAgentPosition(opponent)
       self.distributions.append(util.Counter())
       self.distributions[-1][position] = 1
-      
 
+    # for difference in range(10):
+
+    #   prob = gameState.getDistanceProb(0,difference)
+    #   print(f"Prob is {prob} for difference {difference}")
 
 
 
@@ -120,7 +123,8 @@ class DummyAgent(CaptureAgent):
     
     # print("start")
     my_pos = gameState.getAgentPosition(self.data.player)
-    # time.sleep(0.5)
+    
+    time.sleep(0.5)
     self.update_distributions(gameState,my_pos)
     
     if self.moves:
@@ -217,6 +221,7 @@ class DummyAgent(CaptureAgent):
   
   def update_distributions(self,gameState:GameState,my_pos):
     distances = gameState.getAgentDistances()
+    # print(distances)
     enemies = self.getOpponents(gameState)
     
     
@@ -230,9 +235,12 @@ class DummyAgent(CaptureAgent):
            if self.distributions[i][position] == 1:
             for direction in self.DIR_VEC2STR:
               new_pos = (position[0]+direction[0],position[1]+direction[1])
-              if (new_pos[0]>=0 and new_pos[0] <= gameState.data.layout.width) and (new_pos[1]>=0 and new_pos[1] <= gameState.data.layout.height) and not gameState.hasWall(new_pos[0],new_pos[1]):
-                truedistance = np.sqrt(np.power(my_pos[0]-new_pos[0],2)+np.power(my_pos[1]-new_pos[1],2))
-                print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
+              if (new_pos[0]>=0 and new_pos[0] < gameState.data.layout.width) and (new_pos[1]>=0 and new_pos[1] < gameState.data.layout.height) and not gameState.hasWall(new_pos[0],new_pos[1]):
+                truedistance = int(util.manhattanDistance(my_pos, new_pos))
+                # np.sqrt(np.power(my_pos[0]-new_pos[0],2)+np.power(my_pos[1]-new_pos[1],2))
+                # difference = int(np.abs(truedistance-measured_distance))-1
+                # print(f"positions were {new_pos} and {my_pos}")
+                # print(f"{truedistance} & {measured_distance} gives difference = {difference} and prob {gameState.getDistanceProb(0,int(difference))}")
                 if(gameState.getDistanceProb(truedistance,measured_distance) > 0):
                 
                   positions_to_add.append(new_pos)
@@ -240,21 +248,19 @@ class DummyAgent(CaptureAgent):
         for newPosition in positions_to_add:
           self.distributions[i][newPosition] = 1
           #  print(newPosition)
-    # for i, distribution in enumerate(self.distributions):
-    #     measured_distance = distances[enemies[i]]
+    for i, distribution in enumerate(self.distributions):
+        measured_distance = distances[enemies[i]]
         
-    #     positions_to_add = []
-    #     for position in distribution.keys():
-    #        if self.distributions[i][position] == 1:
-
-    #           truedistance = np.sqrt(np.power(my_pos[0]-position[0],2)+np.power(my_pos[1]-position[1],2))
-    #             # print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
-    #           if(gameState.getDistanceProb(truedistance,measured_distance) == 0):
+        for position in distribution.keys():
+           if self.distributions[i][position] == 1:
+              truedistance = int(util.manhattanDistance(my_pos, position))
+              # difference = int(np.abs(truedistance-measured_distance))-1                # print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
+              if(gameState.getDistanceProb(measured_distance,truedistance) == 0):
                 
-    #               self.distributions[i][position] = 0
+                  self.distributions[i][position] = 0
         
-    #     for newPosition in positions_to_add:
-    #       self.distributions[i][newPosition] = 1
+        for newPosition in positions_to_add:
+          self.distributions[i][newPosition] = 1
     
     self.displayDistributionsOverPositions(self.distributions)
 
