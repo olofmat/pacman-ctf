@@ -29,6 +29,8 @@ from MCTS.AI import MCTSfindMove, removeStop
 from MCTS.MCTSData import MCTSData
 from MCTS.Node import Node
 
+distributions = []
+
 np.set_printoptions(threshold=sys.maxsize)
 
 #################
@@ -71,6 +73,8 @@ class DummyAgent(CaptureAgent):
   """
 
   def registerInitialState(self, gameState:GameState):
+    global distributions
+    
     """
     This method handles the initial setup of thegameState.getLegalActions(self.data.player)
     agent to populate useful fields (such as what team
@@ -89,6 +93,9 @@ class DummyAgent(CaptureAgent):
     on initialization time, please take a look at
     CaptureAgent.registerInitialState in captureAgents.py.
     '''
+
+    
+
     self.WALLS = gameState.data.layout.walls
     self.DIR_STR2VEC = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0)}
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
@@ -106,11 +113,11 @@ class DummyAgent(CaptureAgent):
     self.moves = self.movesToPoint(self.start_pos, self.middle)
 
 
-    self.distributions = []
-    for opponent in self.getOpponents(gameState):
-      position = gameState.getInitialAgentPosition(opponent)
-      self.distributions.append(util.Counter())
-      self.distributions[-1][position] = 1
+    if self.index <2:
+      for opponent in self.getOpponents(gameState):
+        position = gameState.getInitialAgentPosition(opponent)
+        distributions.append(util.Counter())
+        distributions[-1][position] = 1
 
     # for difference in range(10):
 
@@ -124,7 +131,10 @@ class DummyAgent(CaptureAgent):
     # print("start")
     my_pos = gameState.getAgentPosition(self.data.player)
     
-    time.sleep(0.5)
+    time.sleep(0.8)
+
+    
+    
     self.update_distributions(gameState,my_pos)
     
     if self.moves:
@@ -221,55 +231,52 @@ class DummyAgent(CaptureAgent):
   
   def update_distributions(self,gameState:GameState,my_pos):
 
+    global distributions
     distances = gameState.getAgentDistances()
 
     
     
     enemies = self.getOpponents(gameState)
     
-    
-    for i, distribution in enumerate(self.distributions):
+    lastenemy = (self.index-1)%4
         # print(enemies[i])
-        
 
-        if gameState.getAgentPosition(enemies[i]) != None:
+    if gameState.getAgentPosition(enemies[i]) != None:
+        distributions[i] = util.Counter()
+        distributions[i][gameState.getAgentPosition(enemies[i])] = 1
+    else:  
+      measured_distance = distances[enemies[i]]
+      positions_to_add = []
+      for position in distribution.keys():
+        if distributions[i][position] == 1:
+          for direction in self.DIR_VEC2STR:
+            new_pos = (position[0]+direction[0],position[1]+direction[1])
+            if (new_pos[0]>=0 and new_pos[0] < gameState.data.layout.width) and (new_pos[1]>=0 and new_pos[1] < gameState.data.layout.height) and not gameState.hasWall(new_pos[0],new_pos[1]):
+              truedistance = int(util.manhattanDistance(my_pos, new_pos))
+              # np.sqrt(np.power(my_pos[0]-new_pos[0],2)+np.power(my_pos[1]-new_pos[1],2))
+              # difference = int(np.abs(truedistance-measured_distance))-1
+              # print(f"positions were {new_pos} and {my_pos}")
+              # print(f"{truedistance} & {measured_distance} gives difference = {difference} and prob {gameState.getDistanceProb(0,int(difference))}")
+              if(gameState.getDistanceProb(truedistance,measured_distance) > 0):
               
-              self.distributions[i] = util.Counter()
-              self.distributions[i][gameState.getAgentPosition(enemies[i])] = 1
-              continue
-        measured_distance = distances[enemies[i]]
-        
-        positions_to_add = []
-        for position in distribution.keys():
-           if self.distributions[i][position] == 1:
-            for direction in self.DIR_VEC2STR:
-              new_pos = (position[0]+direction[0],position[1]+direction[1])
-              if (new_pos[0]>=0 and new_pos[0] < gameState.data.layout.width) and (new_pos[1]>=0 and new_pos[1] < gameState.data.layout.height) and not gameState.hasWall(new_pos[0],new_pos[1]):
-                truedistance = int(util.manhattanDistance(my_pos, new_pos))
-                # np.sqrt(np.power(my_pos[0]-new_pos[0],2)+np.power(my_pos[1]-new_pos[1],2))
-                # difference = int(np.abs(truedistance-measured_distance))-1
-                # print(f"positions were {new_pos} and {my_pos}")
-                # print(f"{truedistance} & {measured_distance} gives difference = {difference} and prob {gameState.getDistanceProb(0,int(difference))}")
-                if(gameState.getDistanceProb(truedistance,measured_distance) > 0):
-                
-                  positions_to_add.append(new_pos)
-        # print(f"added {len(positions_to_add)} elements")
-        for newPosition in positions_to_add:
-          self.distributions[i][newPosition] = 1
-          #  print(newPosition)
-    for i, distribution in enumerate(self.distributions):
+                positions_to_add.append(new_pos)
+      # print(f"added {len(positions_to_add)} elements")
+      for newPosition in positions_to_add:
+        distributions[i][newPosition] = 1
+      #  print(newPosition)
+    for i, distribution in enumerate(distributions):
         measured_distance = distances[enemies[i]]
         
         for position in distribution.keys():
-           if self.distributions[i][position] == 1:
+           if distributions[i][position] == 1:
               truedistance = int(util.manhattanDistance(my_pos, position))
               # difference = int(np.abs(truedistance-measured_distance))-1                # print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
               if(gameState.getDistanceProb(measured_distance,truedistance) == 0):
                 
-                  self.distributions[i][position] = 0
+                  distributions[i][position] = 0
         
     
-    self.displayDistributionsOverPositions(self.distributions)
+    self.displayDistributionsOverPositions(distributions)
 
 
     
