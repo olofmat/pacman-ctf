@@ -68,21 +68,33 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData) -> tuple:
     ### REASONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
     
+    # carried and scored food
     foodCapturedByRed = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
     foodCapturedByBlue = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
     score = gameState.getScore()
     
+    # distance from closest food
     data.get_food_locations()
     my_pos = gameState.getAgentPosition(data.player)
     closest_food = 76
     for food_location in data.food:
         closest_food = min(closest_food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
 
+    # distance to food only used for my team
     rf, bf = 1/8, 0
     if not gameState.isOnRedTeam(data.player): rf, bf = bf, rf
     
-    heuristic_red = score + foodCapturedByRed/4 - foodCapturedByBlue/4 + (1 - closest_food/76)*rf
-    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + (1 - closest_food/76)*bf
+    # penalty if you are on home row
+    home_penalty_red, home_penalty_blue = 0, 0
+    for i in range(4):
+        pos = gameState.getAgentPosition(i)
+        if not pos: continue
+        if gameState.isOnRedTeam(i)     and pos[0] == 1: home_penalty_red += 1
+        if not gameState.isOnRedTeam(i) and pos[0] == gameState.data.layout.width-2: home_penalty_blue += 1
+        
+    # summing
+    heuristic_red = score + foodCapturedByRed/4 - foodCapturedByBlue/4 + (1 - closest_food/76)*rf - home_penalty_red + home_penalty_blue
+    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + (1 - closest_food/76)*bf + home_penalty_red - home_penalty_blue
     return heuristic_red, heuristic_blue
 
 

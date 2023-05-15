@@ -97,10 +97,11 @@ class DummyAgent(CaptureAgent):
     
     self.start_pos = gameState.getAgentPosition(self.index)
     self.move_from_MCTS = False
+    
 
 
   def chooseAction(self, gameState:GameState) -> str:
-    my_pos = gameState.getAgentPosition(self.data.player)
+    self.my_pos = gameState.getAgentPosition(self.data.player)
     
     # finding which players to include in tree
     players = []
@@ -108,12 +109,13 @@ class DummyAgent(CaptureAgent):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
         threshold = 1 if self.data.state.isOnRedTeam(self.index) == self.data.state.isOnRedTeam(i) else 100
-        if self.data.player == i or self.data.distances[pos[0]][pos[1]][my_pos[0]][my_pos[1]] <= threshold: players.append(i)
+        if self.data.player == i or self.data.distances[pos[0]][pos[1]][self.my_pos[0]][self.my_pos[1]] <= threshold: players.append(i)
     players = np.array(players)
     self.data.players = players
     
-    # deciding whether to keep tree
-    self.handle_tree_keeping(gameState, self.move_from_MCTS)
+    # deciding whether to keep tree, unclear if tree should always be discarded or not
+    self.discard_tree(gameState)
+    # self.handle_tree_keeping(gameState, self.move_from_MCTS)
     
     mcts_move = MCTSfindMove(self.data)
         
@@ -121,20 +123,43 @@ class DummyAgent(CaptureAgent):
     child_visits = [child.visits for child in self.data.root.children]
     if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 10): 
         self.data.get_food_locations()
-        if self.index == 0: food = self.data.food[:len(self.data.food)//2]
-        if self.index == 2: food = self.data.food[len(self.data.food)//2:]
-        
-        closest_food_dist, closest_food = 100, ()
-        for food_location in food:
-            if self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]] < closest_food_dist and food_location != my_pos: 
-                closest_food_dist = self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
-                closest_food = food_location
-        self.moves = self.movesToPoint(my_pos, closest_food)
+        if gameState.getAgentState(self.index).numCarrying >= 10 or \
+          (gameState.getAgentState(self.index).numCarrying >  0  and len(self.data.food) <= 2): self.go_to_deposit()
+        else: self.go_to_nearest_food()
         self.move_from_MCTS = False
         if self.moves: return self.moves[0]
         
+    print("MCTS")
     self.move_from_MCTS = True
     return mcts_move
+
+
+
+  def go_to_nearest_food(self) -> None:
+    print("FOOD")
+    if self.index % 2 == 0: food = self.data.food[:len(self.data.food)//2]
+    if self.index % 2 == 1: food = self.data.food[len(self.data.food)//2:]
+    
+    closest_food_dist, closest_food = 100, ()
+    for food_location in food:
+        if self.data.distances[self.my_pos[0]][self.my_pos[1]][food_location[0]][food_location[1]] < closest_food_dist and food_location != self.my_pos: 
+            closest_food_dist = self.data.distances[self.my_pos[0]][self.my_pos[1]][food_location[0]][food_location[1]]
+            closest_food = food_location
+    self.moves = self.movesToPoint(self.my_pos, closest_food)
+
+
+  def go_to_deposit(self) -> None:
+    print("HOME")
+    if self.data.state.isOnRedTeam(self.index): home = self.WALLS.width//2 - 1
+    else: home = self.WALLS.width//2
+    
+    closest_home_dist, closest_home = 100, ()
+    for y in range(self.WALLS.height):
+        if self.WALLS[home][y]: continue
+        if self.data.distances[self.my_pos[0]][self.my_pos[1]][home][y] < closest_home_dist: 
+            closest_home_dist = self.data.distances[self.my_pos[0]][self.my_pos[1]][home][y]
+            closest_home = (home, y)
+    self.moves = self.movesToPoint(self.my_pos, closest_home)
 
 
   def movesToPoint(self, init_pos:Tuple[int], point:Tuple[int]) -> list[str]:
