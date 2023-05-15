@@ -221,6 +221,8 @@ class DummyAgent(CaptureAgent):
     
     
     for i, distribution in enumerate(self.distributions):
+        # print(enemies[i])
+        # print(distances)
         measured_distance = distances[enemies[i]]
         
         positions_to_add = []
@@ -228,32 +230,31 @@ class DummyAgent(CaptureAgent):
            if self.distributions[i][position] == 1:
             for direction in self.DIR_VEC2STR:
               new_pos = (position[0]+direction[0],position[1]+direction[1])
-              if (new_pos[0]>=0 and new_pos[0] <= 30) and (new_pos[1]>=0 and new_pos[1] <= 14) and not gameState.hasWall(new_pos[0],new_pos[1]):
+              if (new_pos[0]>=0 and new_pos[0] <= gameState.data.layout.width) and (new_pos[1]>=0 and new_pos[1] <= gameState.data.layout.height) and not gameState.hasWall(new_pos[0],new_pos[1]):
                 truedistance = np.sqrt(np.power(my_pos[0]-new_pos[0],2)+np.power(my_pos[1]-new_pos[1],2))
-                # print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
-                if(gameState.getDistanceProb(truedistance,measured_distance) != 0):
+                print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
+                if(gameState.getDistanceProb(truedistance,measured_distance) > 0):
                 
                   positions_to_add.append(new_pos)
-        
+        # print(f"added {len(positions_to_add)} elements")
         for newPosition in positions_to_add:
           self.distributions[i][newPosition] = 1
           #  print(newPosition)
-    ### HERE SOMETHING SHOULD BE ADDED THAT REMOVES POINTS
-    for i, distribution in enumerate(self.distributions):
-        measured_distance = distances[enemies[i]]
+    # for i, distribution in enumerate(self.distributions):
+    #     measured_distance = distances[enemies[i]]
         
-        positions_to_add = []
-        for position in distribution.keys():
-           if self.distributions[i][position] == 1:
+    #     positions_to_add = []
+    #     for position in distribution.keys():
+    #        if self.distributions[i][position] == 1:
 
-              truedistance = np.sqrt(np.power(my_pos[0]-position[0],2)+np.power(my_pos[1]-position[1],2))
-                # print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
-              if(gameState.getDistanceProb(truedistance,measured_distance) == 0):
+    #           truedistance = np.sqrt(np.power(my_pos[0]-position[0],2)+np.power(my_pos[1]-position[1],2))
+    #             # print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
+    #           if(gameState.getDistanceProb(truedistance,measured_distance) == 0):
                 
-                  self.distributions[i][position] = 0
+    #               self.distributions[i][position] = 0
         
-        for newPosition in positions_to_add:
-          self.distributions[i][newPosition] = 1
+    #     for newPosition in positions_to_add:
+    #       self.distributions[i][newPosition] = 1
     
     self.displayDistributionsOverPositions(self.distributions)
 
