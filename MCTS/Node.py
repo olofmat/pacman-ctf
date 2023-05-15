@@ -8,7 +8,7 @@ class Node:
         self.value = np.array(0, np.float32)
         self.visits = np.array(0, np.int32)
         self.parent:int = parent
-        self.children:list = []
+        self.children:list["Node"] = []
         self.move:str = move
         self.player:int = player                    # self.player makes self.move
 

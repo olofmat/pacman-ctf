@@ -90,17 +90,17 @@ class DummyAgent(CaptureAgent):
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
     
     CaptureAgent.registerInitialState(self, gameState)
-    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.9)
+    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.1)
     # self.data.distances = self.calculate_distances()
     # np.save("distances.npy", self.data.distances)
     self.data.distances = np.load("distances.npy")
     
     self.start_pos = gameState.getAgentPosition(self.index)
+    self.move_from_MCTS = False
 
 
   def chooseAction(self, gameState:GameState) -> str:
     my_pos = gameState.getAgentPosition(self.data.player)
-    self.moves = []
     
     # finding which players to include in tree
     players = []
@@ -113,28 +113,27 @@ class DummyAgent(CaptureAgent):
     self.data.players = players
     
     # deciding whether to keep tree
-    if self.data.only_me_in_tree and len(players) == 1: self.keep_tree()
-    else: self.discard_tree(gameState)
-    self.data.only_me_in_tree = True if len(players) == 1 else False
+    self.handle_tree_keeping(gameState, self.move_from_MCTS)
     
     mcts_move = MCTSfindMove(self.data)
         
     # if MCTS is uncertain of what to do
-    # child_visits = [child.visits for child in self.data.root.children]
-    # if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 10): 
-    #     self.data.get_food_locations()
-    #     if self.index == 0: food = self.data.food[:len(self.data.food)//2]
-    #     if self.index == 2: food = self.data.food[len(self.data.food)//2:]
+    child_visits = [child.visits for child in self.data.root.children]
+    if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 10): 
+        self.data.get_food_locations()
+        if self.index == 0: food = self.data.food[:len(self.data.food)//2]
+        if self.index == 2: food = self.data.food[len(self.data.food)//2:]
         
-    #     closest_food_dist, closest_food = 100, ()
-    #     for food_location in food:
-    #         if self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]] < closest_food_dist and food_location != my_pos: 
-    #             closest_food_dist = self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
-    #             closest_food = food_location
-    #     self.moves = self.movesToPoint(my_pos, closest_food)
-    #     if self.moves: return self.moves[0]
-    # print("MCTS MOVE")
-
+        closest_food_dist, closest_food = 100, ()
+        for food_location in food:
+            if self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]] < closest_food_dist and food_location != my_pos: 
+                closest_food_dist = self.data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
+                closest_food = food_location
+        self.moves = self.movesToPoint(my_pos, closest_food)
+        self.move_from_MCTS = False
+        if self.moves: return self.moves[0]
+        
+    self.move_from_MCTS = True
     return mcts_move
 
 
@@ -178,11 +177,18 @@ class DummyAgent(CaptureAgent):
     return possible
 
 
-  def keep_tree(self, move:str=None):
-    if move: self.data.root = next((x for x in self.data.root.children if x.move == move))
-    else: self.data.root = self.data.root.chooseBestChild()
+  def handle_tree_keeping(self, gameState:GameState, from_MCTS:bool):
+    if self.keeping_tree(): self.keep_tree(gameState, from_MCTS)
+    else: self.discard_tree(gameState)
+    self.data.only_me_in_tree = True if len(self.data.players) == 1 else False
+
+
+  def keep_tree(self, gameState, from_MCTS:bool):
+    if from_MCTS: self.data.root = self.data.root.chooseBestChild()
+    else: self.data.root = next((x for x in self.data.root.children if x.move == self.moves[0]))
     self.data.root.parent = None
-    self.data.state = self.data.state.generateSuccessor(self.data.player, self.data.root.move)
+    self.data.state = gameState
+    # self.data.state = self.data.state.generateSuccessor(self.data.player, self.data.root.move)
 
 
   def discard_tree(self, gameState:GameState):
@@ -191,6 +197,10 @@ class DummyAgent(CaptureAgent):
     moves = gameState.getLegalActions(self.data.player)
     removeStop(moves)
     self.data.root.makeChildren(self.data.player, moves)
+    
+    
+  def keeping_tree(self) -> bool:
+      return self.data.only_me_in_tree and len(self.data.players) == 1
 
 
   def calculate_distances(self) -> np.ndarray:
