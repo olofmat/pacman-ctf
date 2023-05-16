@@ -103,21 +103,33 @@ class DummyAgent(CaptureAgent):
     
 
     CaptureAgent.registerInitialState(self, gameState)
-    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.9)
+    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.4)
     # self.data.distances = self.calculate_distances()
     # np.save("distances.npy", self.data.distances)
     self.data.distances = np.load("distances.npy")
     
     self.start_pos = gameState.getAgentPosition(self.index)
-    self.middle = (15, 7)
+    self.middle = (10, 7)
     self.moves = self.movesToPoint(self.start_pos, self.middle)
 
 
-    if self.index <2:
+    if self.index in [0,1]: ### ONLY THE FIRST AGENT SHOULD INITIALIZE
       for opponent in self.getOpponents(gameState):
         position = gameState.getInitialAgentPosition(opponent)
         distributions.append(util.Counter())
         distributions[-1][position] = 1
+
+    self.enemypositions = [[None, None],[None,None]] # [enemy][0 = current, 1 = past]
+
+    # if self.index == 1:
+       
+    #    print("second")
+    #    my_pos = gameState.getAgentPosition(self.data.player)
+
+    #    self.update_distributions(gameState,my_pos)
+
+    
+
 
     # for difference in range(10):
 
@@ -133,14 +145,31 @@ class DummyAgent(CaptureAgent):
     
     time.sleep(0.8)
 
-    
-    
     self.update_distributions(gameState,my_pos)
     
-    if self.moves:
-        return self.moves.pop(0)
+    # if self.moves:
+    #     return self.moves.pop(0)
+
+    for i_0_1, i in enumerate(self.getOpponents(gameState)):
+       self.enemypositions[i_0_1][1] = self.enemypositions[i_0_1][0]
+       self.enemypositions[i_0_1][0] = gameState.getAgentPosition(i)
+       if self.enemypositions[i_0_1][1] == None:
+          continue
+       
+       if self.enemypositions[i_0_1][0] == None and util.manhattanDistance(self.enemypositions[i_0_1][1],my_pos) <= 2 and my_pos != gameState.getInitialAgentPosition(self.index):
+          position = gameState.getInitialAgentPosition(i)
+          distributions[i_0_1] =  util.Counter()
+          distributions[i_0_1][position] = 1
+           
+       
+          
+       
 
     players = []
+
+    
+
+    
     for i in range(4):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
@@ -221,34 +250,35 @@ class DummyAgent(CaptureAgent):
                 for x in range(self.WALLS.width):
                     if (x_start, y_start) == (x, y): continue
                     if self.WALLS[x][y]: continue
-
                     path_length = len(self.movesToPoint((x_start, y_start), (x, y)))
-
                     distance_matrix[x_start][y_start][x][y] = path_length
                     distance_matrix[x][y][x_start][y_start] = path_length
     
     return distance_matrix
   
   def update_distributions(self,gameState:GameState,my_pos):
-
+    
     global distributions
     distances = gameState.getAgentDistances()
-
     
     
     enemies = self.getOpponents(gameState)
     
     lastenemy = (self.index-1)%4
+    if lastenemy <2: enemy_index = 0
+    else: enemy_index =1
         # print(enemies[i])
 
-    if gameState.getAgentPosition(enemies[i]) != None:
-        distributions[i] = util.Counter()
-        distributions[i][gameState.getAgentPosition(enemies[i])] = 1
+    distribution = distributions[enemy_index]
+
+    if gameState.getAgentPosition(enemies[enemy_index]) != None:
+        distributions[enemy_index] = util.Counter()
+        distributions[enemy_index][gameState.getAgentPosition(enemies[enemy_index])] = 1
     else:  
-      measured_distance = distances[enemies[i]]
+      measured_distance = distances[enemies[enemy_index]]
       positions_to_add = []
       for position in distribution.keys():
-        if distributions[i][position] == 1:
+        if distributions[enemy_index][position] == 1:
           for direction in self.DIR_VEC2STR:
             new_pos = (position[0]+direction[0],position[1]+direction[1])
             if (new_pos[0]>=0 and new_pos[0] < gameState.data.layout.width) and (new_pos[1]>=0 and new_pos[1] < gameState.data.layout.height) and not gameState.hasWall(new_pos[0],new_pos[1]):
@@ -262,16 +292,17 @@ class DummyAgent(CaptureAgent):
                 positions_to_add.append(new_pos)
       # print(f"added {len(positions_to_add)} elements")
       for newPosition in positions_to_add:
-        distributions[i][newPosition] = 1
+        distributions[enemy_index][newPosition] = 1
       #  print(newPosition)
     for i, distribution in enumerate(distributions):
+        
         measured_distance = distances[enemies[i]]
         
         for position in distribution.keys():
            if distributions[i][position] == 1:
               truedistance = int(util.manhattanDistance(my_pos, position))
-              # difference = int(np.abs(truedistance-measured_distance))-1                # print(f"{truedistance} & {measured_distance} gives {gameState.getDistanceProb(truedistance,measured_distance)}")
-              if(gameState.getDistanceProb(measured_distance,truedistance) == 0):
+              
+              if(truedistance <= 5 or  gameState.getDistanceProb(measured_distance,truedistance) == 0): ### If we can see the square or if the probability of the measurement is zero
                 
                   distributions[i][position] = 0
         
