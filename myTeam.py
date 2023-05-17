@@ -121,14 +121,12 @@ class DummyAgent(CaptureAgent):
         
     self.enemypositions = [[None, None],[None,None]] # [enemy][0 = current, 1 = past]
 
-    self.counter = 0
+    
 
   def chooseAction(self, gameState:GameState) -> str:
-    self.counter += 1
-    if self.counter > 50: time.sleep(0.8)
+    
     # print("start")
     my_pos = gameState.getAgentPosition(self.data.player)
-    
     
 
     self.update_distributions(gameState,my_pos)
@@ -146,14 +144,7 @@ class DummyAgent(CaptureAgent):
           distributions[i_0_1][position] = 1
           self.spread_distribution_for_enemy(gameState,i_0_1,my_pos)
            
-       
-          
-       
-
     players = []
-
-    
-
     
     for i in range(4):
         pos = gameState.getAgentPosition(i)
@@ -241,7 +232,7 @@ class DummyAgent(CaptureAgent):
     
     return distance_matrix
   
-  def update_distributions(self,gameState:GameState,my_pos):
+  def update_distributions(self,gameState:GameState,my_pos): ### ADD FRIEND
     global distributions
     distances = gameState.getAgentDistances()
     
