@@ -113,7 +113,8 @@ class DummyAgent(CaptureAgent):
     self.moves = self.movesToPoint(self.start_pos, self.middle)
 
 
-
+    for index in self.getTeam(gameState):
+       if index != self.index: self.friend_index = index
 
     if self.index in [0,1]: ### ONLY THE FIRST AGENT SHOULD INITIALIZE
       for opponent in self.getOpponents(gameState):
@@ -127,11 +128,11 @@ class DummyAgent(CaptureAgent):
 
   def chooseAction(self, gameState:GameState) -> str:
     
-    # print("start")
-    my_pos = gameState.getAgentPosition(self.data.player)
     
+    my_pos = gameState.getAgentPosition(self.data.player)
+    friend_pos = gameState.getAgentPosition(self.friend_index)
 
-    self.update_distributions(gameState,my_pos)
+    self.update_distributions(gameState,my_pos, friend_pos)
     
 
     for i_0_1, i in enumerate(self.getOpponents(gameState)):
@@ -234,19 +235,18 @@ class DummyAgent(CaptureAgent):
     
     return distance_matrix
   
-  def update_distributions(self,gameState:GameState,my_pos): ### ADD FRIEND
+  def update_distributions(self,gameState:GameState,my_pos, friend_pos): ### ADD FRIEND
     global distributions
     distances = gameState.getAgentDistances()
     
     
     enemies = self.getOpponents(gameState)
-    
 
     ### CONVERTS THEIR 0-3 INDEX TO 0-1
     lastenemy = (self.index-1)%4
     if lastenemy <2: enemy_index = 0
     else: enemy_index =1
-        # print(enemies[i])
+        
 
     distribution = distributions[enemy_index]
 
@@ -262,7 +262,8 @@ class DummyAgent(CaptureAgent):
         for position in distribution.keys():
            if distributions[i][position] == 1:
               truedistance = int(util.manhattanDistance(my_pos, position))
-              if((truedistance <= 5 and gameState.getAgentPosition(enemies[i]) != position) or\
+              frienddistance = int(util.manhattanDistance(friend_pos, position))
+              if(((truedistance <= 5 or frienddistance <= 5) and gameState.getAgentPosition(enemies[i]) != position) or\
                    gameState.getDistanceProb(measured_distance,truedistance) == 0): ### If we can see the square or if the probability of the measurement is zero
                   distributions[i][position] = 0
         
