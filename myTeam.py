@@ -113,6 +113,8 @@ class DummyAgent(CaptureAgent):
     self.moves = self.movesToPoint(self.start_pos, self.middle)
 
 
+
+
     if self.index in [0,1]: ### ONLY THE FIRST AGENT SHOULD INITIALIZE
       for opponent in self.getOpponents(gameState):
         position = gameState.getInitialAgentPosition(opponent)
