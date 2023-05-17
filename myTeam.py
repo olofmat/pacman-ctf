@@ -93,7 +93,6 @@ class DummyAgent(CaptureAgent):
     on initialization time, please take a look at
     CaptureAgent.registerInitialState in captureAgents.py.
     '''
-
     
 
     self.WALLS = gameState.data.layout.walls
@@ -132,20 +131,13 @@ class DummyAgent(CaptureAgent):
     my_pos = gameState.getAgentPosition(self.data.player)
     friend_pos = gameState.getAgentPosition(self.friend_index)
 
+    before = time.process_time()
+
     self.update_distributions(gameState,my_pos, friend_pos)
     
+    print(f"It took {np.round(time.process_time()-before,3)} seconds")
 
-    for i_0_1, i in enumerate(self.getOpponents(gameState)):
-       self.enemypositions[i_0_1][1] = self.enemypositions[i_0_1][0]
-       self.enemypositions[i_0_1][0] = gameState.getAgentPosition(i)
-       if self.enemypositions[i_0_1][1] == None:
-          continue
-       
-       if self.enemypositions[i_0_1][0] == None and util.manhattanDistance(self.enemypositions[i_0_1][1],my_pos) <= 2 and my_pos != gameState.getInitialAgentPosition(self.index):
-          position = gameState.getInitialAgentPosition(i)
-          distributions[i_0_1] =  util.Counter()
-          distributions[i_0_1][position] = 1
-          self.spread_distribution_for_enemy(gameState,i_0_1,my_pos)
+
            
     players = []
     
@@ -256,6 +248,18 @@ class DummyAgent(CaptureAgent):
     else:  
        self.spread_distribution_for_enemy(gameState, enemy_index, my_pos)
 
+    for i_0_1, i in enumerate(self.getOpponents(gameState)):
+       self.enemypositions[i_0_1][1] = self.enemypositions[i_0_1][0]
+       self.enemypositions[i_0_1][0] = gameState.getAgentPosition(i)
+       if self.enemypositions[i_0_1][1] == None:
+          continue
+       
+       if self.enemypositions[i_0_1][0] == None and util.manhattanDistance(self.enemypositions[i_0_1][1],my_pos) <= 2 and my_pos != gameState.getInitialAgentPosition(self.index):
+          position = gameState.getInitialAgentPosition(i)
+          distributions[i_0_1] =  util.Counter()
+          distributions[i_0_1][position] = 1
+          self.spread_distribution_for_enemy(gameState,i_0_1,my_pos)
+
     ### NOW GOES THROUGH BOTH ENEMY AGENTS AND PRUNES THEIR POSITIONS BASED ON THE MEASUREMENT
     for i, distribution in enumerate(distributions):
         measured_distance = distances[enemies[i]]
@@ -289,4 +293,3 @@ class DummyAgent(CaptureAgent):
               positions_to_add.append(new_pos)
     for newPosition in positions_to_add:
       distributions[enemy_0_1][newPosition] = 1
-    self.displayDistributionsOverPositions(distributions)
