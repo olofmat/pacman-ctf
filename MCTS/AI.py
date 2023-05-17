@@ -55,7 +55,7 @@ def MCTSfindMove(data:MCTSData) -> str:
                     currentState, starting_position, furthest_away_distance, furthest_away_position, data.player)
 
         # Rollout
-        result = evaluationHeuristic(currentState, data)
+        result = evaluationHeuristic(currentState, data, current.player)
 
         # Backpropagate
         current.backpropagate(data.state, result)
@@ -64,25 +64,14 @@ def MCTSfindMove(data:MCTSData) -> str:
     return data.root.chooseBestChild().move
 
 
-def evaluationHeuristic(gameState: GameState, data:MCTSData) -> tuple:
+def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int) -> tuple[float]:
     ### REASONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
     
     # carried and scored food
-    foodCapturedByRed = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
+    foodCapturedByRed  = gameState.data.layout.totalFood/2 - len(gameState.getBlueFood().asList())
     foodCapturedByBlue = gameState.data.layout.totalFood/2 - len(gameState.getRedFood().asList())    
     score = gameState.getScore()
-    
-    # distance from closest food
-    data.get_food_locations()
-    my_pos = gameState.getAgentPosition(data.player)
-    closest_food = 76
-    for food_location in data.food:
-        closest_food = min(closest_food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
-
-    # distance to food only used for my team
-    rf, bf = 1/8, 0
-    if not gameState.isOnRedTeam(data.player): rf, bf = bf, rf
     
     # penalty if you are on home row
     home_penalty_red, home_penalty_blue = 0, 0
@@ -93,8 +82,40 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData) -> tuple:
         if not gameState.isOnRedTeam(i) and pos[0] == gameState.data.layout.width-2: home_penalty_blue += 1
         
     # summing
-    heuristic_red = score + foodCapturedByRed/4 - foodCapturedByBlue/4 + (1 - closest_food/76)*rf - home_penalty_red + home_penalty_blue
-    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + (1 - closest_food/76)*bf + home_penalty_red - home_penalty_blue
+    heuristic_red  =  score + foodCapturedByRed/4 - foodCapturedByBlue/4 - home_penalty_red + home_penalty_blue
+    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + home_penalty_red - home_penalty_blue
+    
+    if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player): return heuristic_red, heuristic_blue
+    
+    # distance to closest food
+    data.get_food_locations()
+    my_pos = gameState.getAgentPosition(current_player)
+    closest_food = 100
+    for food_location in data.food:
+        closest_food = min(closest_food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
+        
+        
+    middle = (gameState.data.layout.walls.width-1)/2
+    closest_enemy = 100
+    closest_capsule = 100
+    for dist in data.distributions:
+        for pos in dist:
+            if (pos[0] > middle and gameState.isOnRedTeam(data.player)) or (pos[0] < middle and not gameState.isOnRedTeam(data.player)): continue
+            closest_enemy = min(closest_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
+            
+    if closest_enemy == 100: 
+        closest_enemy = 0 
+    else:
+        for capsule in gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules():
+            closest_capsule = min(closest_capsule, data.distances[my_pos[0]][my_pos[1]][capsule[0]][capsule[1]])    
+    if closest_capsule == 100: closest_capsule = 0 
+            
+    if gameState.isOnRedTeam(data.player):
+        if data.player <= 1: heuristic_red += (1-closest_food/76)/8 - (1-closest_enemy/76)/16
+        else: heuristic_red += (1-closest_food/76)/8 - (1-closest_enemy/76)/16
+    else:
+        if data.player <= 1: heuristic_blue += (1-closest_enemy/76)/8 + (1-closest_capsule/76)/16
+        else: heuristic_blue += (1-closest_food/76)/8
     return heuristic_red, heuristic_blue
 
 

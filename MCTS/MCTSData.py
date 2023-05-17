@@ -16,6 +16,7 @@ class MCTSData:
         self.players:np.ndarray
         self.distances: np.ndarray
         self.food:list
+        self.distributions:list[dict]
         
         self.only_me_in_tree = False
 

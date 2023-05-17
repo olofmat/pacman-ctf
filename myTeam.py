@@ -30,6 +30,7 @@ from MCTS.MCTSData import MCTSData
 from MCTS.Node import Node
 
 distributions = []
+distances = []
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -73,7 +74,7 @@ class DummyAgent(CaptureAgent):
   """
 
   def registerInitialState(self, gameState:GameState):
-    global distributions
+    global distributions, distances
     
     """
     This method handles the initial setup of the gameState.getLegalActions(self.data.player)
@@ -99,10 +100,8 @@ class DummyAgent(CaptureAgent):
     self.DIR_STR2VEC = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0)}
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
     
-    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.4)
-    # self.data.distances = self.calculate_distances()
-    # np.save("distances.npy", self.data.distances)
-    self.data.distances = np.load("distances.npy")
+    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.5)
+    self.move_from_MCTS = False
     
     self.start_pos = gameState.getAgentPosition(self.index)
 
@@ -110,22 +109,25 @@ class DummyAgent(CaptureAgent):
        if index != self.index: self.friend_index = index
 
     if self.index in [0, 1]: ### ONLY THE FIRST AGENT SHOULD INITIALIZE
-      for opponent in self.getOpponents(gameState):
-        position = gameState.getInitialAgentPosition(opponent)
-        distributions.append(dict())
-        distributions[-1][position] = 1
+        # distances = self.calculate_distances()
+        # np.save("distances.npy", distances)
+        for opponent in self.getOpponents(gameState):
+            position = gameState.getInitialAgentPosition(opponent)
+            distributions.append(dict())
+            distributions[-1][position] = 1
+            
+    self.data.distances = distances
+    self.data.distances = np.load("distances.npy")
         
     self.enemy_positions = [[None, None],[None,None]] # [enemy][0 = current, 1 = past]
-
+    self.data.distributions = distributions
     
 
   def chooseAction(self, gameState:GameState) -> str:
     self.my_pos = gameState.getAgentPosition(self.data.player)
     friend_pos = gameState.getAgentPosition(self.friend_index)
 
-    t = time.process_time()
     self.update_distributions(gameState, friend_pos)
-    print(time.process_time() - t)
     
     players = []
     for i in range(4):
@@ -143,14 +145,14 @@ class DummyAgent(CaptureAgent):
     mcts_move = MCTSfindMove(self.data)
         
     # if MCTS is uncertain of what to do
-    child_visits = [child.visits for child in self.data.root.children]
-    if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 80): 
-        self.data.get_food_locations()
-        if gameState.getAgentState(self.index).numCarrying >= 10 or \
-          (gameState.getAgentState(self.index).numCarrying >  0  and len(self.data.food) <= 2): self.go_to_deposit()
-        else: self.go_to_nearest_food()
-        self.move_from_MCTS = False
-        if self.moves: return self.moves[0]
+    # child_visits = [child.visits for child in self.data.root.children]
+    # if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 0.1*self.data.root.visits): 
+    #     self.data.get_food_locations()
+    #     if gameState.getAgentState(self.index).numCarrying >= 10 or \
+    #       (gameState.getAgentState(self.index).numCarrying >  0  and len(self.data.food) <= 2): self.go_to_deposit()
+    #     else: self.go_to_nearest_food()
+    #     self.move_from_MCTS = False
+    #     if self.moves: return self.moves[0]
         
     print("MCTS")
     self.move_from_MCTS = True
