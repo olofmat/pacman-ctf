@@ -93,29 +93,23 @@ class DummyAgent(CaptureAgent):
     on initialization time, please take a look at
     CaptureAgent.registerInitialState in captureAgents.py.
     '''
+    CaptureAgent.registerInitialState(self, gameState)
     
-
     self.WALLS = gameState.data.layout.walls
     self.DIR_STR2VEC = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0)}
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
     
-    
-
-    CaptureAgent.registerInitialState(self, gameState)
     self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.4)
     # self.data.distances = self.calculate_distances()
     # np.save("distances.npy", self.data.distances)
     self.data.distances = np.load("distances.npy")
     
     self.start_pos = gameState.getAgentPosition(self.index)
-    self.middle = (10, 7)
-    self.moves = self.movesToPoint(self.start_pos, self.middle)
-
 
     for index in self.getTeam(gameState):
        if index != self.index: self.friend_index = index
 
-    if self.index in [0,1]: ### ONLY THE FIRST AGENT SHOULD INITIALIZE
+    if self.index in [0, 1]: ### ONLY THE FIRST AGENT SHOULD INITIALIZE
       for opponent in self.getOpponents(gameState):
         position = gameState.getInitialAgentPosition(opponent)
         distributions.append(util.Counter())
@@ -314,7 +308,6 @@ class DummyAgent(CaptureAgent):
                    gameState.getDistanceProb(measured_distance,true_distance) == 0): ### If we can see the square or if the probability of the measurement is zero
                   distributions[i][position] = 0
         
-    
     self.displayDistributionsOverPositions(distributions)
 
 
