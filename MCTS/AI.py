@@ -45,7 +45,7 @@ def MCTSfindMove(data:MCTSData) -> str:
         # Expand tree if current has been visited and isn't a terminal node
         if current.visits > 0 and not currentState.isOver():
             moves = currentState.getLegalActions(current.nextPlayer(data.players))
-            removeStop(moves)
+            if data.state.isOnRedTeam(data.player) == data.state.isOnRedTeam(current.nextPlayer(data.players)): removeStop(moves)
             current.makeChildren(current.nextPlayer(data.players), moves)
             current = current.selectChild(data.UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
@@ -78,44 +78,47 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     for i in range(4):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
-        if gameState.isOnRedTeam(i)     and pos[0] == 1: home_penalty_red += 1
-        if not gameState.isOnRedTeam(i) and pos[0] == gameState.data.layout.width-2: home_penalty_blue += 1
+        if gameState.isOnRedTeam(i)     and pos[0] == 1: home_penalty_red += 3
+        if not gameState.isOnRedTeam(i) and pos[0] == gameState.data.layout.width-2: home_penalty_blue += 3
         
     # summing
     heuristic_red  =  score + foodCapturedByRed/4 - foodCapturedByBlue/4 - home_penalty_red + home_penalty_blue
-    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + home_penalty_red - home_penalty_blue
+    heuristic_blue = -heuristic_red
     
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player): return heuristic_red, heuristic_blue
     
+    my_pos = gameState.getAgentPosition(current_player)
+    food = offensive_enemy = defensive_enemy = own_capsule = 76
+    
     # distance to closest food
     data.get_food_locations()
-    my_pos = gameState.getAgentPosition(current_player)
-    closest_food = 100
     for food_location in data.food:
-        closest_food = min(closest_food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
-        
+        food = min(food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
         
     middle = (gameState.data.layout.walls.width-1)/2
-    closest_enemy = 100
-    closest_capsule = 100
     for dist in data.distributions:
         for pos in dist:
-            if (pos[0] > middle and gameState.isOnRedTeam(data.player)) or (pos[0] < middle and not gameState.isOnRedTeam(data.player)): continue
-            closest_enemy = min(closest_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
-            
-    if closest_enemy == 100: 
-        closest_enemy = 0 
-    else:
-        for capsule in gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules():
-            closest_capsule = min(closest_capsule, data.distances[my_pos[0]][my_pos[1]][capsule[0]][capsule[1]])    
-    if closest_capsule == 100: closest_capsule = 0 
-            
-    if gameState.isOnRedTeam(data.player):
-        if data.player <= 1: heuristic_red += (1-closest_food/76)/8 - (1-closest_enemy/76)/16
-        else: heuristic_red += (1-closest_food/76)/8 - (1-closest_enemy/76)/16
-    else:
-        if data.player <= 1: heuristic_blue += (1-closest_enemy/76)/8 + (1-closest_capsule/76)/16
-        else: heuristic_blue += (1-closest_food/76)/8
+            if (pos[0] < middle and gameState.isOnRedTeam(data.player)) or (pos[0] > middle and not gameState.isOnRedTeam(data.player)):
+                offensive_enemy = min(offensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
+            else:
+                defensive_enemy = min(defensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
+    
+    own_cap = gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules()
+    if own_cap: own_capsule = data.distances[my_pos[0]][my_pos[1]][own_cap[0][0]][own_cap[0][1]]
+    team = f"Red{current_player<=1}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=1}"
+    print(team)
+    match team:
+        case "RedTrue":
+            heuristic_red += (1-offensive_enemy/76)/2 + (1-own_capsule/76)/8 - (1-defensive_enemy/76)/16
+        case "RedFalse":
+            heuristic_red += (1-food/76) - (1-defensive_enemy/76)/16
+        case "BlueTrue":
+            heuristic_blue += (1-offensive_enemy/76)/8 + (1-own_capsule/76)/16
+        case "BlueFalse":
+            heuristic_blue += (1-food/76)/8
+        case _:
+            raise Exception
+   
     return heuristic_red, heuristic_blue
 
 
@@ -147,21 +150,3 @@ def printData(root: Node) -> None:
     print(childVisits)
     print('')
     
-    
-# def rolloutHeuristic(currentState: GameState, currentPlayer: int, cutoff: int) -> float:
-#     movesInRollout = 0
-#     # finds a random move and executes it if possible. as long as gameEnd is False and movesInRollout is less than cutoff
-#     while True:
-#         if currentState.isOver():
-#             return result()
-
-#         if movesInRollout >= cutoff:
-#             return evaluationHeuristic(currentState)
-
-#         moves = currentState.getLegalActions(currentPlayer)
-#         removeStop(moves)
-#         move = randomMove(moves)
-#         currentState = currentState.generateSuccessor(currentPlayer, move)
-
-#         movesInRollout += 1
-#         currentPlayer = nextPlayer(currentPlayer)

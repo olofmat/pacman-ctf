@@ -18,8 +18,6 @@ class MCTSData:
         self.food:list
         self.distributions:list[dict]
         
-        self.only_me_in_tree = False
-
 
     def get_food_locations(self) -> None:
         got_food = self.state.getBlueFood() if self.state.isOnRedTeam(self.player) else self.state.getRedFood()

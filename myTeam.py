@@ -98,9 +98,9 @@ class DummyAgent(CaptureAgent):
     
     self.WALLS = gameState.data.layout.walls
     self.DIR_STR2VEC = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0)}
-    self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
+    self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West', (0,0):'Stop'}
     
-    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.5)
+    self.data = MCTSData(gameState, self.index, UCB1=1, sim_time=0.5)
     self.move_from_MCTS = False
     
     self.start_pos = gameState.getAgentPosition(self.index)
@@ -146,7 +146,12 @@ class DummyAgent(CaptureAgent):
         
     # if MCTS is uncertain of what to do
     # child_visits = [child.visits for child in self.data.root.children]
-    # if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 0.1*self.data.root.visits): 
+    # if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 0.01*self.data.root.visits): 
+    #     if self.index % 2 == 0: self.go_to_nearest_enemy()
+    #     if self.moves:
+    #         self.move_from_MCTS = False
+    #         return self.moves[0]
+        
     #     self.data.get_food_locations()
     #     if gameState.getAgentState(self.index).numCarrying >= 10 or \
     #       (gameState.getAgentState(self.index).numCarrying >  0  and len(self.data.food) <= 2): self.go_to_deposit()
@@ -170,6 +175,19 @@ class DummyAgent(CaptureAgent):
             closest_food_dist = self.data.distances[self.my_pos[0]][self.my_pos[1]][food_location[0]][food_location[1]]
             closest_food = food_location
     self.moves = self.movesToPoint(self.my_pos, closest_food)
+
+
+  def go_to_nearest_enemy(self) -> None:
+    print("KILL", end=" : ")
+    middle = (self.WALLS.width-1)/2
+    enemy_dist, enemy_location = 100, ()
+    for dist in distributions:
+        for pos in dist:
+            if (pos[0] > middle and self.data.state.isOnRedTeam(self.index)) or (pos[0] < middle and not self.data.state.isOnRedTeam(self.index)): continue
+            if self.data.distances[self.my_pos[0]][self.my_pos[1]][pos[0]][pos[1]] < enemy_dist: 
+                enemy_dist = self.data.distances[self.my_pos[0]][self.my_pos[1]][pos[0]][pos[1]]
+                enemy_location = pos
+    self.moves = self.movesToPoint(self.my_pos, enemy_location)
 
 
   def go_to_deposit(self) -> None:
@@ -229,14 +247,30 @@ class DummyAgent(CaptureAgent):
   def handle_tree_keeping(self, gameState:GameState, from_MCTS:bool):
     if self.keeping_tree(): self.keep_tree(gameState, from_MCTS)
     else: self.discard_tree(gameState)
-    self.data.only_me_in_tree = True if len(self.data.players) == 1 else False
+    self.data.last_people_in_tree = self.data.players
+    self.data.player_pos = np.array([gameState.getAgentPosition(i) for i in self.data.players])
 
 
-  def keep_tree(self, gameState, from_MCTS:bool):
-    if from_MCTS: self.data.root = self.data.root.chooseBestChild()
-    else: self.data.root = next((x for x in self.data.root.children if x.move == self.moves[0]))
+  def keep_tree(self, gameState:GameState, from_MCTS:bool):
+    new_pos = np.array([gameState.getAgentPosition(i) for i in self.data.players])
+    moves = new_pos - self.data.player_pos
+    index = np.where(self.data.players == self.index)[0][0]
+    # print(f"I am player {self.index} and I think players {self.data.players} did the moves {moves}")
+    for i, player in enumerate(self.data.players):
+        move = moves[index]
+        # print(pos_diff)
+        # print(f"players: {self.data.players}, this_player: {self.index} index: {index}, move: {move}")
+        # print([x.move for x in self.data.root.children])
+        self.data.root = next((x for x in self.data.root.children if x.move == self.DIR_VEC2STR[tuple(move)]))
+        index = (index + 1) % len(self.data.players)
+        
+        
+        # if from_MCTS: self.data.root = self.data.root.chooseBestChild()
+        # else: self.data.root = next((x for x in self.data.root.children if x.move == self.moves[0]))
+    self.data.root.player = self.index
     self.data.root.parent = None
     self.data.state = gameState
+    self.data.keeps += 1
     # self.data.state = self.data.state.generateSuccessor(self.data.player, self.data.root.move)
 
 
@@ -246,10 +280,11 @@ class DummyAgent(CaptureAgent):
     moves = gameState.getLegalActions(self.data.player)
     removeStop(moves)
     self.data.root.makeChildren(self.data.player, moves)
+    self.data.keeps = 0
     
     
   def keeping_tree(self) -> bool:
-      return self.data.only_me_in_tree and len(self.data.players) == 1
+    return np.array_equal(self.data.last_people_in_tree, self.data.players)
 
 
   def calculate_distances(self) -> np.ndarray:
