@@ -101,9 +101,9 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int,
 
     team = f"Red{current_player<=defender_threshold}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=defender_threshold}"
     match team:
-        case "RedTrue":
+        case "RedTrue": ### DEFENSIVE
             heuristic_red += (1-offensive_enemy/data.max_distance)/2 + (1-own_capsule/data.max_distance)/8 - (1-defensive_enemy/data.max_distance)/16
-        case "RedFalse":
+        case "RedFalse": ### OFFENSIVE
             heuristic_red += (1-food/data.max_distance) - (1-defensive_enemy/data.max_distance)/16
         case "BlueTrue":
             heuristic_blue += (1-offensive_enemy/data.max_distance)/8 + (1-own_capsule/data.max_distance)/16
