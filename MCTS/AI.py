@@ -91,8 +91,6 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int,
         red, blue = enemy_heuristic(gameState, data, my_pos, current_player)
         return heuristic_red + red, heuristic_blue + blue
 
-    food = offensive_enemy = defensive_enemy = own_capsule = home_dist = data.max_distance
-    
     food = closest_food(data, my_pos)
     offensive_enemy, defensive_enemy = enemies_distances(gameState, data, my_pos)
     home_dist = distance_home(gameState, data, my_pos, current_player)
@@ -125,12 +123,14 @@ def home_penalty(gameState:GameState):
     return home_penalty_red, home_penalty_blue
 
 def closest_food(data:MCTSData, my_pos):
+    food = data.max_distance
     data.get_food_locations()
     for food_location in data.food:
         food = min(food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
     return food
 
 def enemies_distances(gameState:GameState, data:MCTSData, my_pos):
+    offensive_enemy = defensive_enemy = data.max_distance
     middle = (gameState.data.layout.walls.width-1)/2
     for dist in data.distributions:
         for pos in dist:
@@ -141,6 +141,7 @@ def enemies_distances(gameState:GameState, data:MCTSData, my_pos):
     return offensive_enemy, defensive_enemy
 
 def distance_home(gameState:GameState, data:MCTSData, my_pos, current_player):
+    home_dist = data.max_distance
     if gameState.isOnRedTeam(current_player): home_col = gameState.data.layout.walls.width//2 - 1
     else: home_col = gameState.data.layout.walls.width//2
 
@@ -151,6 +152,7 @@ def distance_home(gameState:GameState, data:MCTSData, my_pos, current_player):
     return home_dist
 
 def capsule_distance(gameState:GameState, data:MCTSData, my_pos):
+    own_capsule = data.max_distance
     own_cap = gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules()
     if own_cap: own_capsule = data.distances[my_pos[0]][my_pos[1]][own_cap[0][0]][own_cap[0][1]]
     return own_capsule
