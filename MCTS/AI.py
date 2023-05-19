@@ -83,12 +83,22 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
         
     # summing
     heuristic_red  =  score + foodCapturedByRed/4 - foodCapturedByBlue/4 - home_penalty_red + home_penalty_blue
-    heuristic_blue = -heuristic_red
-    
+    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + home_penalty_red - home_penalty_blue
+
+    ### IF ENEMY IS NOT GHOST YOU ARE ON THE OTHER SIDE THEY SHOULD CHASE YOU
+    my_pos = gameState.getAgentPosition(current_player)
+    root_pos = gameState.getAgentPosition(data.player)
+    if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player) and gameState.getAgentState(data.player).isPacman and gameState.getAgentState(current_player).scaredTimer <= 0:
+        distance_to_root = data.distances[my_pos[0]][my_pos[1]][root_pos[0]][root_pos[1]]
+        if gameState.isOnRedTeam(current_player):
+            return heuristic_red + (1-distance_to_root/data.max_distance)*19, heuristic_blue
+        else:
+            return heuristic_red,  heuristic_blue + (1-distance_to_root/data.max_distance)*19
+
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player): return heuristic_red, heuristic_blue
     
     my_pos = gameState.getAgentPosition(current_player)
-    food = offensive_enemy = defensive_enemy = own_capsule = data.max_distance
+    food = offensive_enemy = defensive_enemy = own_capsule = home_dist = data.max_distance
     
     # distance to closest food
     data.get_food_locations()
@@ -103,18 +113,29 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
             else:
                 defensive_enemy = min(defensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
     
+    ### HOW FAR IT IS TO GET HOME
+    if gameState.isOnRedTeam(current_player): home_col = gameState.data.layout.walls.width//2 - 1
+    else: home_col = gameState.data.layout.walls.width//2
+
+    for y in range(gameState.data.layout.walls.height):
+        if gameState.data.layout.walls[home_col][y]: continue
+        if data.distances[my_pos[0]][my_pos[1]][home_col][y] < home_dist: 
+            home_dist = data.distances[my_pos[0]][my_pos[1]][home_col][y]
+
+    num_carrying = gameState.getAgentState(current_player).numCarrying
+    
     own_cap = gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules()
     if own_cap: own_capsule = data.distances[my_pos[0]][my_pos[1]][own_cap[0][0]][own_cap[0][1]]
     team = f"Red{current_player<=1}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=1}"
     match team:
         case "RedTrue":
-            heuristic_red += (1-offensive_enemy/76)/2 + (1-own_capsule/76)/8 - (1-defensive_enemy/76)/16
+            heuristic_red += (1-offensive_enemy/data.max_distance)/2 + (1-own_capsule/data.max_distance)/8 - (1-defensive_enemy/data.max_distance)/16
         case "RedFalse":
-            heuristic_red += (1-food/76) - (1-defensive_enemy/76)/16
+            heuristic_red += (1-food/data.max_distance) - (1-defensive_enemy/data.max_distance)/16
         case "BlueTrue":
-            heuristic_blue += (1-offensive_enemy/76)/8 + (1-own_capsule/76)/16
+            heuristic_blue += (1-offensive_enemy/data.max_distance)/8 + (1-own_capsule/data.max_distance)/16
         case "BlueFalse":
-            heuristic_blue += (1-food/76)/8
+            heuristic_blue += (1-food/data.max_distance)/8
         case _:
             raise Exception
    
@@ -148,4 +169,5 @@ def printData(root: Node) -> None:
     childVisits.sort(reverse=True)
     print(childVisits)
     print('')
+    
     
