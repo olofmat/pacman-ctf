@@ -100,7 +100,7 @@ class DummyAgent(CaptureAgent):
     self.DIR_STR2VEC = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0)}
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West'}
     
-    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.5)
+    self.data = MCTSData(gameState, self.index, UCB1=0.4, sim_time=0.9)
     self.move_from_MCTS = False
     
     self.start_pos = gameState.getAgentPosition(self.index)

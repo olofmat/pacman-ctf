@@ -35,10 +35,10 @@ def MCTSfindMove(data:MCTSData) -> str:
             current = current.selectChild(data.UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
 
-            # returns a move if visits exceeds half of total simulations
-            if current.visits >= 0.5*data.sim_number:
-                printData(data.root)
-                return current.move
+            # # returns a move if visits exceeds half of total simulations
+            # if current.visits >= 0.5*data.sim_number:
+            #     printData(data.root)
+            #     return current.move
 
         if (current_depth > max_depth): max_depth = current_depth
 
@@ -78,44 +78,75 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     for i in range(4):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
-        if gameState.isOnRedTeam(i)     and pos[0] == 1: home_penalty_red += 1
-        if not gameState.isOnRedTeam(i) and pos[0] == gameState.data.layout.width-2: home_penalty_blue += 1
+        if gameState.isOnRedTeam(i)     and pos[0] == 1: home_penalty_red += 5
+        if not gameState.isOnRedTeam(i) and pos[0] == gameState.data.layout.width-2: home_penalty_blue += 5
         
     # summing
-    heuristic_red  =  score + foodCapturedByRed/4 - foodCapturedByBlue/4 - home_penalty_red + home_penalty_blue
-    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + home_penalty_red - home_penalty_blue
+    heuristic_red  =  score + foodCapturedByRed/16 - foodCapturedByBlue/16 - home_penalty_red + home_penalty_blue
+    heuristic_blue = -score - foodCapturedByRed/16 + foodCapturedByBlue/16 + home_penalty_red - home_penalty_blue
     
+    
+
+
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player): return heuristic_red, heuristic_blue
     
-    # distance to closest food
-    data.get_food_locations()
     my_pos = gameState.getAgentPosition(current_player)
-    closest_food = 100
-    for food_location in data.food:
-        closest_food = min(closest_food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
-        
-        
-    middle = (gameState.data.layout.walls.width-1)/2
-    closest_enemy = 100
-    closest_capsule = 100
-    for dist in data.distributions:
-        for pos in dist:
-            if (pos[0] > middle and gameState.isOnRedTeam(data.player)) or (pos[0] < middle and not gameState.isOnRedTeam(data.player)): continue
-            closest_enemy = min(closest_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
+    data.get_food_locations()
+
+    if data.player <= 4: ### OFFENSIVE
+        closest_food = 100
+        for food_location in data.food:
+            closest_food = min(closest_food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
             
-    if closest_enemy == 100: 
-        closest_enemy = 0 
-    else:
-        for capsule in gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules():
-            closest_capsule = min(closest_capsule, data.distances[my_pos[0]][my_pos[1]][capsule[0]][capsule[1]])    
-    if closest_capsule == 100: closest_capsule = 0 
+        distance_to_friend = data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
+
+        middle = (gameState.data.layout.walls.width-1)/2
+        closest_enemy = 100
+        closest_capsule = 100
+        for dist in data.distributions:
+            for pos in dist:
+                if (pos[0] > middle and not gameState.isOnRedTeam(data.player)) or (pos[0] < middle and gameState.isOnRedTeam(data.player)): continue
+                closest_enemy = min(closest_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
             
-    if gameState.isOnRedTeam(data.player):
-        if data.player <= 1: heuristic_red += (1-closest_food/76)/8 - (1-closest_enemy/76)/16
-        else: heuristic_red += (1-closest_food/76)/8 - (1-closest_enemy/76)/16
-    else:
-        if data.player <= 1: heuristic_blue += (1-closest_enemy/76)/8 + (1-closest_capsule/76)/16
-        else: heuristic_blue += (1-closest_food/76)/8
+        if closest_enemy == 100: 
+            closest_enemy = 0 
+        else:
+            for capsule in gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules():
+                closest_capsule = min(closest_capsule, data.distances[my_pos[0]][my_pos[1]][capsule[0]][capsule[1]])    
+    
+        if closest_capsule == 100: closest_capsule = 0 
+            
+        if gameState.isOnRedTeam(data.player):
+            heuristic_red += (1-closest_food/76)/8 - (1-distance_to_friend/76)/12
+        else:
+            heuristic_blue += (1-closest_food/76)/8
+        
+    else: ### DEFENSIVE
+            
+        # distance_to_friend = data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]]
+
+        middle = (gameState.data.layout.walls.width-1)/2
+        closest_enemy_hunter = 100
+        closest_enemy_defender = 100
+        closest_capsule = 100
+        for dist in data.distributions:
+            for pos in dist:
+                if (pos[0] > middle and gameState.isOnRedTeam(data.player)) or (pos[0] < middle and not gameState.isOnRedTeam(data.player)): ### IF ENEMY IS ON THEIR SIDE
+                    closest_enemy_defender = min(closest_enemy_defender, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
+                
+                else: closest_enemy_hunter = min(closest_enemy_hunter, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
+            
+        if closest_enemy_hunter == 100:
+            closest_enemy = closest_enemy_defender
+        else: closest_enemy = closest_enemy_hunter
+    
+        if closest_capsule == 100: closest_capsule = 0 
+            
+        if gameState.isOnRedTeam(data.player):
+            heuristic_red += (1-closest_enemy/76)/4 ### DEFENSIVE
+        else:
+            heuristic_blue += (1-closest_enemy/76)/8 + (1-closest_enemy/76)/16
+
     return heuristic_red, heuristic_blue
 
 
