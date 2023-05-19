@@ -102,7 +102,7 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
             heuristic_blue += (1-food/data.max_distance)/8
         case _:
             raise Exception
-   
+            threshhold = 0
     return heuristic_red, heuristic_blue
 
 
@@ -155,11 +155,11 @@ def enemy_heuristic(gameState:GameState, data:MCTSData, my_pos, current_player):
     if gameState.getAgentState(data.player).isPacman and gameState.getAgentState(current_player).scaredTimer <= 0:
         distance_to_root = data.distances[my_pos[0]][my_pos[1]][root_pos[0]][root_pos[1]]
         if gameState.isOnRedTeam(current_player):
-            heuristic_red += (1-distance_to_root/data.max_distance)*19
-            heuristic_blue -= (1-distance_to_root/data.max_distance)*19
+            heuristic_red += (1-distance_to_root/data.max_distance)*5
+            heuristic_blue -= (1-distance_to_root/data.max_distance)*5
         else:
-            heuristic_red -= (1-distance_to_root/data.max_distance)*19
-            heuristic_blue + (1-distance_to_root/data.max_distance)*19
+            heuristic_red -= (1-distance_to_root/data.max_distance)*5
+            heuristic_blue + (1-distance_to_root/data.max_distance)*5
     return heuristic_red, heuristic_blue
 
 
