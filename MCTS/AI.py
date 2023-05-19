@@ -84,7 +84,18 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     # summing
     heuristic_red  =  score + foodCapturedByRed/4 - foodCapturedByBlue/4 - home_penalty_red + home_penalty_blue
     heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + home_penalty_red - home_penalty_blue
-    
+
+    ### IF ENEMY IS NOT GHOST YOU ARE ON THE OTHER SIDE THEY SHOULD CHASE YOU
+
+    my_pos = gameState.getAgentPosition(current_player)
+    root_pos = gameState.getAgentPosition(data.player)
+    if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player) and gameState.getAgentState(data.player).isPacman and gameState.getAgentState(current_player).scaredTimer <= 0:
+        distance_to_root = data.distances[my_pos[0]][my_pos[1]][root_pos[0]][root_pos[1]]
+        if gameState.isOnRedTeam(current_player):
+            return heuristic_red + (1-distance_to_root/76)*19, heuristic_blue
+        else:
+            return heuristic_red,  heuristic_blue + (1-distance_to_root/76)*19
+
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player): return heuristic_red, heuristic_blue
     
     # distance to closest food
@@ -98,7 +109,7 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     middle = (gameState.data.layout.walls.width-1)/2
     closest_enemy = 100
     closest_capsule = 100
-    for dist in data.distributions:
+    for dist in data.distributions: ### CLOSEST ENEMY THAT CAN KILL YOU
         for pos in dist:
             if (pos[0] > middle and gameState.isOnRedTeam(data.player)) or (pos[0] < middle and not gameState.isOnRedTeam(data.player)): continue
             closest_enemy = min(closest_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
@@ -110,9 +121,25 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
             closest_capsule = min(closest_capsule, data.distances[my_pos[0]][my_pos[1]][capsule[0]][capsule[1]])    
     if closest_capsule == 100: closest_capsule = 0 
             
+    ### HOW FAR IT IS TO GET HOME
+    
+
+    if gameState.isOnRedTeam(current_player): home_col = gameState.data.layout.walls.width//2 - 1
+    else: home_col = gameState.data.layout.walls.width//2
+
+    closest_home_dist = 100
+    for y in range(gameState.data.layout.walls.height):
+        if gameState.data.layout.walls[home_col][y]: continue
+        if data.distances[my_pos[0]][my_pos[1]][home_col][y] < closest_home_dist: 
+            closest_home_dist = data.distances[my_pos[0]][my_pos[1]][home_col][y]
+
+
+    num_carrying = gameState.getAgentState(current_player).numCarrying
+
+
     if gameState.isOnRedTeam(data.player):
-        if data.player <= 1: heuristic_red += (1-closest_food/76)/8 - (1-closest_enemy/76)/16
-        else: heuristic_red += (1-closest_food/76)/8 - (1-closest_enemy/76)/16
+        if data.player <= 3: heuristic_red += (1-closest_food/76)*19 + (1-closest_home_dist/76)*num_carrying*10 ### OFFENSIVE
+        else: heuristic_red += (1-closest_enemy/15)/16 ### DEFENSIVE
     else:
         if data.player <= 1: heuristic_blue += (1-closest_enemy/76)/8 + (1-closest_capsule/76)/16
         else: heuristic_blue += (1-closest_food/76)/8
