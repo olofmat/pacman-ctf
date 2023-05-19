@@ -88,7 +88,7 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player): return heuristic_red, heuristic_blue
     
     my_pos = gameState.getAgentPosition(current_player)
-    food = offensive_enemy = defensive_enemy = own_capsule = 76
+    food = offensive_enemy = defensive_enemy = own_capsule = data.max_distance
     
     # distance to closest food
     data.get_food_locations()
@@ -106,7 +106,6 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     own_cap = gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules()
     if own_cap: own_capsule = data.distances[my_pos[0]][my_pos[1]][own_cap[0][0]][own_cap[0][1]]
     team = f"Red{current_player<=1}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=1}"
-    print(team)
     match team:
         case "RedTrue":
             heuristic_red += (1-offensive_enemy/76)/2 + (1-own_capsule/76)/8 - (1-defensive_enemy/76)/16

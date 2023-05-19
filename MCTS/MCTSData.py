@@ -17,6 +17,7 @@ class MCTSData:
         self.distances: np.ndarray
         self.food:list
         self.distributions:list[dict]
+        self.max_distance:float
         
 
     def get_food_locations(self) -> None:

@@ -118,6 +118,7 @@ class DummyAgent(CaptureAgent):
             
     self.data.distances = distances
     self.data.distances = np.load("distances.npy")
+    self.data.max_distance = np.amax(self.data.distances)
         
     self.enemy_positions = [[None, None],[None,None]] # [enemy][0 = current, 1 = past]
     self.data.distributions = distributions
