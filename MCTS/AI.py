@@ -8,6 +8,13 @@ from MCTS.MCTSData import MCTSData
 
 
 def MCTSfindMove(data:MCTSData) -> str:
+    if data.state.isOnRedTeam(data.player): mcts_score = data.state.getScore()
+    else: mcts_score = data.state.getScore()
+
+    if mcts_score > 5:
+        defender_threshold = 3
+    else: defender_threshold = 1
+
     moves = data.state.getLegalActions(data.player)
     removeStop(moves)
     if not moves: return None
@@ -55,7 +62,7 @@ def MCTSfindMove(data:MCTSData) -> str:
                     currentState, starting_position, furthest_away_distance, furthest_away_position, data.player)
 
         # Rollout
-        result = evaluationHeuristic(currentState, data, current.player)
+        result = evaluationHeuristic(currentState, data, current.player,defender_threshold)
 
         # Backpropagate
         current.backpropagate(data.state, result)
@@ -64,7 +71,7 @@ def MCTSfindMove(data:MCTSData) -> str:
     return data.root.chooseBestChild().move
 
 
-def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int) -> tuple[float]:
+def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int, defender_threshold :int) -> tuple[float]:
     ### REASONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
     
@@ -91,9 +98,9 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player) and gameState.getAgentState(data.player).isPacman and gameState.getAgentState(current_player).scaredTimer <= 0:
         distance_to_root = data.distances[my_pos[0]][my_pos[1]][root_pos[0]][root_pos[1]]
         if gameState.isOnRedTeam(current_player):
-            return heuristic_red + (1-distance_to_root/data.max_distance)*19, heuristic_blue
+            return heuristic_red + (1-distance_to_root/data.max_distance)*5, heuristic_blue -(1-distance_to_root/data.max_distance)*5
         else:
-            return heuristic_red,  heuristic_blue + (1-distance_to_root/data.max_distance)*19
+            return heuristic_red-(1-distance_to_root/data.max_distance)*5,  heuristic_blue + (1-distance_to_root/data.max_distance)*5
 
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player): return heuristic_red, heuristic_blue
     
@@ -126,12 +133,12 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     
     own_cap = gameState.getRedCapsules() if gameState.isOnRedTeam(data.player) else gameState.getBlueCapsules()
     if own_cap: own_capsule = data.distances[my_pos[0]][my_pos[1]][own_cap[0][0]][own_cap[0][1]]
-    team = f"Red{current_player<=1}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=1}"
+    team = f"Red{current_player<=defender_threshold}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=1}"
     match team:
-        case "RedTrue":
-            heuristic_red += (1-offensive_enemy/data.max_distance)/2 + (1-own_capsule/data.max_distance)/8 - (1-defensive_enemy/data.max_distance)/16
-        case "RedFalse":
-            heuristic_red += (1-food/data.max_distance) - (1-defensive_enemy/data.max_distance)/16
+        case "RedTrue": ### DEFENSIVE ORANGE
+            heuristic_red += (1-offensive_enemy/data.max_distance)*5  + (1-defensive_enemy/data.max_distance)/16 
+        case "RedFalse": ### OFFENSIVE RED
+            heuristic_red += (1-food/data.max_distance)*10 - (1-defensive_enemy/data.max_distance)/16 + (1-home_dist/data.max_distance)*0.8*num_carrying
         case "BlueTrue":
             heuristic_blue += (1-offensive_enemy/data.max_distance)/8 + (1-own_capsule/data.max_distance)/16
         case "BlueFalse":
