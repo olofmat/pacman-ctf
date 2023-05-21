@@ -12,38 +12,38 @@ def MCTSfindMove(data:MCTSData) -> str:
     removeStop(moves)
     if not moves: return None
     
-    starting_position = data.state.getAgentPosition(data.player)
-    furthest_away_distance = 0
-    furthest_away_position = starting_position
-    max_depth = 0
+    # starting_position = data.state.getAgentPosition(data.player)
+    # furthest_away_distance = 0
+    # furthest_away_position = starting_position
+    # max_depth = 0
     
     startTime = time.process_time()
     for _ in range(data.sim_number):
         if time.process_time() - startTime > data.sim_time:
-            distance = [x-y for x, y in zip(furthest_away_position, starting_position)]
-            team = "Red" if currentState.isOnRedTeam(data.player) else "Blue"
-            role = "Defensive" if data.player <=  data.defender_threshold else "Offensive"
-            print(f"maximum depth: {max_depth}, checked {distance} from starting position in {starting_position}, in team {team} as {role}")
-            print(f"Hypothisys is {np.round(evaluationHeuristic(GameState(data.state), data, data.player),2)}")
-            printData(data.root)
+            # distance = [x-y for x, y in zip(furthest_away_position, starting_position)]
+            # team = "Red" if currentState.isOnRedTeam(data.player) else "Blue"
+            # role = "Defensive" if data.player <=  data.defender_threshold else "Offensive"
+            # print(f"maximum depth: {max_depth}, checked {distance} from starting position in {starting_position}, in team {team} as {role}")
+            # print(f"Hypothisys is {np.round(evaluationHeuristic(GameState(data.state), data, data.player),2)}")
+            # printData(data.root)
             return data.root.chooseBestChild().move
 
         currentState = GameState(data.state)
         current = data.root
-        current_depth = 0
+        # current_depth = 0
         
         # Tree traverse
         while len(current.children) > 0:
-            current_depth += 1
+            # current_depth += 1
             current = current.selectChild(data.UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
 
             # returns a move if visits exceeds half of total simulations
             if current.visits >= 0.5*data.sim_number:
-                printData(data.root)
+                # printData(data.root)
                 return current.move
 
-        if (current_depth > max_depth): max_depth = current_depth
+        # if (current_depth > max_depth): max_depth = current_depth
 
         # Expand tree if current has been visited and isn't a terminal node
         if current.visits > 0 and not currentState.isOver():
@@ -53,9 +53,9 @@ def MCTSfindMove(data:MCTSData) -> str:
             current = current.selectChild(data.UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
             
-            if (current.player == data.player):
-                furthest_away_distance, furthest_away_position = calculate_depth(
-                    currentState, starting_position, furthest_away_distance, furthest_away_position, data.player)
+            # if (current.player == data.player):
+            #     furthest_away_distance, furthest_away_position = calculate_depth(
+            #         currentState, starting_position, furthest_away_distance, furthest_away_position, data.player)
 
         # Rollout
         result = evaluationHeuristic(currentState, data, current.player)
@@ -63,7 +63,7 @@ def MCTSfindMove(data:MCTSData) -> str:
         # Backpropagate
         current.backpropagate(data.state, result)
 
-    printData(data.root)
+    # printData(data.root)
     return data.root.chooseBestChild().move
 
 
@@ -86,29 +86,30 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player):
         return heuristic_red, heuristic_blue
 
-    offensive_enemy, defensive_enemy = enemies_distances(gameState, data, my_pos, current_player)
     team = f"Red{current_player<=data.defender_threshold}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=data.defender_threshold}"
     match team:
         case "RedTrue": ### DEFENSIVE
+            offensive_enemy, _ = enemies_distances(gameState, data, my_pos, current_player)
             heuristic_red  += (1-offensive_enemy/data.max_distance)*10
         case "RedFalse": ### OFFENSIVE
             food = closest_food(data, my_pos)
             num_carrying = gameState.getAgentState(current_player).numCarrying
             home = 0
-            if num_carrying > 5 or (num_carrying > 0 and len(data.food) <= 2): 
+            if num_carrying > 2 or (num_carrying > 0 and len(data.food) <= 2): 
                 home_dist = distance_home(gameState, data, my_pos, current_player)
-                home = (1-home_dist/data.max_distance)*2
-            heuristic_red  += (1-food/data.max_distance)*2 + home
+                home = (1-home_dist/data.max_distance)/2
+            heuristic_red  += (1-food/data.max_distance)*3 + home
         case "BlueTrue":
+            offensive_enemy, _ = enemies_distances(gameState, data, my_pos, current_player)
             heuristic_blue += (1-offensive_enemy/data.max_distance)*10
         case "BlueFalse":
             food = closest_food(data, my_pos)
             num_carrying = gameState.getAgentState(current_player).numCarrying
             home = 0
-            if num_carrying > 5 or (num_carrying > 0 and len(data.food) <= 2): 
+            if num_carrying > 2 or (num_carrying > 0 and len(data.food) <= 2): 
                 home_dist = distance_home(gameState, data, my_pos, current_player)
-                home = (1-home_dist/data.max_distance)*2
-            heuristic_blue += (1-food/data.max_distance)*2 + home
+                home = (1-home_dist/data.max_distance)/2
+            heuristic_blue += (1-food/data.max_distance)*3 + home
         case _:
             raise Exception
     return heuristic_red, heuristic_blue
@@ -140,7 +141,7 @@ def enemies_distances(gameState:GameState, data:MCTSData, my_pos, current_player
             if (pos[0] < data.middle and gameState.isOnRedTeam(data.player)) or (pos[0] > data.middle and not gameState.isOnRedTeam(data.player)):
                 offensive_enemy = min(offensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
             else:
-                defensive_enemy = min(defensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
+                # defensive_enemy = min(defensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
                 if abs(data.middle - pos[0]) < min_x[i]:
                     min_x[i] = abs(data.middle - pos[0])
                     ys[i] = pos[1]
@@ -151,7 +152,7 @@ def enemies_distances(gameState:GameState, data:MCTSData, my_pos, current_player
         if gameState.isOnRedTeam(current_player): home_col = gameState.data.layout.walls.width//2 - 1
         else: home_col = gameState.data.layout.walls.width//2
         # go to same rank as closest opponent if only one defender, and otherwise shadow one opponent each
-        if data.defender_threshold == 1: y = min(ys)
+        if data.defender_threshold == 1: y = ys[min_x.index(min(min_x))]
         else: y = ys[data.index_mapping[current_player]]
         
         offensive_enemy = 0

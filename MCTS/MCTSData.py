@@ -37,7 +37,7 @@ class MCTSData:
         else: score = -self.state.getScore()
 
         self.defender_threshold = 1
-        if score > 5:
+        if score >= 3:
             self.defender_threshold = 10
 
 

@@ -103,15 +103,14 @@ class DummyAgent(CaptureAgent):
     self.data = MCTSData(gameState, self.index, UCB1=1, sim_time=0.95)
     # self.data.find_choke_points()
     self.data.middle = (self.WALLS.width-1)/2
-    self.move_from_MCTS = False
-    
-    self.start_pos = gameState.getAgentPosition(self.index)
+    # self.move_from_MCTS = False
+    # self.start_pos = gameState.getAgentPosition(self.index)
 
     for index in self.getTeam(gameState):
        if index != self.index: self.friend_index = index
 
     if self.index in [0, 1]: ### ONLY THE FIRST AGENT SHOULD INITIALIZE
-        # distances = self.calculate_distances()
+        distances = self.calculate_distances()
         # np.save("distances.npy", distances)
         for opponent in self.getOpponents(gameState):
             position = gameState.getInitialAgentPosition(opponent)
@@ -119,7 +118,7 @@ class DummyAgent(CaptureAgent):
             distributions[-1][position] = 1
             
     self.data.distances = distances
-    self.data.distances = np.load("distances.npy")
+    # self.data.distances = np.load("distances.npy")
     self.data.max_distance = np.amax(self.data.distances)
         
     self.enemy_positions = [[None, None],[None,None]] # [enemy][0 = current, 1 = past]
@@ -162,8 +161,8 @@ class DummyAgent(CaptureAgent):
     #     self.move_from_MCTS = False
     #     if self.moves: return self.moves[0]
         
-    print("MCTS")
-    self.move_from_MCTS = True
+    # print("MCTS")
+    # self.move_from_MCTS = True
     return mcts_move
 
 
@@ -351,12 +350,12 @@ class DummyAgent(CaptureAgent):
         for position in to_remove:
             del distributions[i][position]
         
-    drawing = [util.Counter() for _ in range(2)]
-    for i, distribution in enumerate(distributions):
-        for pos in distribution:
-            drawing[i][pos] = 1
+    # drawing = [util.Counter() for _ in range(2)]
+    # for i, distribution in enumerate(distributions):
+    #     for pos in distribution:
+    #         drawing[i][pos] = 1
     
-    self.displayDistributionsOverPositions(drawing)
+    # self.displayDistributionsOverPositions(drawing)
 
 
   def spread_distribution_for_enemy(self,gameState, enemy_0_1,my_pos):
