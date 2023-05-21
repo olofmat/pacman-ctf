@@ -87,9 +87,9 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
     offensive_enemy, defensive_enemy = enemies_distances(gameState, data, my_pos, current_player)
     team = f"Red{current_player<=data.defender_threshold}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=data.defender_threshold}"
     match team:
-        case "RedTrue":
+        case "RedTrue": ### DEFENSIVE
             heuristic_red  += (1-offensive_enemy/data.max_distance)*10
-        case "RedFalse":
+        case "RedFalse": ### OFFENSIVE
             food = closest_food(data, my_pos)
             num_carrying = gameState.getAgentState(current_player).numCarrying
             home = 0
@@ -98,9 +98,15 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
                 home = (1-home_dist/data.max_distance)*2
             heuristic_red  += (1-food/data.max_distance)/2 + home - (1-defensive_enemy/data.max_distance)/64
         case "BlueTrue":
-            heuristic_blue += 0
+            heuristic_blue += (1-offensive_enemy/data.max_distance)*10
         case "BlueFalse":
-            heuristic_blue += 0
+            food = closest_food(data, my_pos)
+            num_carrying = gameState.getAgentState(current_player).numCarrying
+            home = 0
+            if num_carrying > 5 or (num_carrying > 0 and len(data.food) <= 2): 
+                home_dist = distance_home(gameState, data, my_pos, current_player)
+                home = (1-home_dist/data.max_distance)*2
+            heuristic_blue += (1-food/data.max_distance)/2 + home - (1-defensive_enemy/data.max_distance)/64
         case _:
             raise Exception
     return heuristic_red, heuristic_blue
