@@ -21,7 +21,9 @@ def MCTSfindMove(data:MCTSData) -> str:
     for _ in range(data.sim_number):
         if time.process_time() - startTime > data.sim_time:
             distance = [x-y for x, y in zip(furthest_away_position, starting_position)]
-            print(f"maximum depth: {max_depth}, checked {distance} from starting position in {starting_position}")
+            team = "Red" if currentState.isOnRedTeam(data.player) else "Blue"
+            role = "Defensive" if data.player <=  data.defender_threshold else "Offensive"
+            print(f"maximum depth: {max_depth}, checked {distance} from starting position in {starting_position}, in team {team} as {role}")
             printData(data.root)
             return data.root.chooseBestChild().move
 
