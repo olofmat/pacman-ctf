@@ -84,8 +84,7 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
 
     # if enemy: return here
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player):
-        red, blue = enemy_heuristic(gameState, data, my_pos, current_player)
-        return heuristic_red + red, heuristic_blue + blue
+        return heuristic_red, heuristic_blue
 
     offensive_enemy, defensive_enemy = enemies_distances(gameState, data, my_pos, current_player)
     team = f"Red{current_player<=data.defender_threshold}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=data.defender_threshold}"
@@ -99,7 +98,7 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
             if num_carrying > 5 or (num_carrying > 0 and len(data.food) <= 2): 
                 home_dist = distance_home(gameState, data, my_pos, current_player)
                 home = (1-home_dist/data.max_distance)*2
-            heuristic_red  += (1-food/data.max_distance)/2 + home - (1-defensive_enemy/data.max_distance)/64
+            heuristic_red  += (1-food/data.max_distance)*2 + home
         case "BlueTrue":
             heuristic_blue += (1-offensive_enemy/data.max_distance)*10
         case "BlueFalse":
@@ -109,7 +108,7 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int)
             if num_carrying > 5 or (num_carrying > 0 and len(data.food) <= 2): 
                 home_dist = distance_home(gameState, data, my_pos, current_player)
                 home = (1-home_dist/data.max_distance)*2
-            heuristic_blue += (1-food/data.max_distance)/2 + home - (1-defensive_enemy/data.max_distance)/64
+            heuristic_blue += (1-food/data.max_distance)*2 + home
         case _:
             raise Exception
     return heuristic_red, heuristic_blue
@@ -133,26 +132,26 @@ def closest_food(data:MCTSData, my_pos):
     return food
 
 def enemies_distances(gameState:GameState, data:MCTSData, my_pos, current_player):
-    offensive_enemy = data.max_distance
-    defensive_enemy = [data.max_distance]*2
-    middle = (gameState.data.layout.walls.width-1)/2
+    offensive_enemy = defensive_enemy = data.max_distance
     ys = [gameState.data.layout.walls.height//2]*2
+    min_x = [data.max_distance]*2
     for i, distribution in enumerate(data.distributions):
         for pos in distribution:
-            if (pos[0] < middle and gameState.isOnRedTeam(data.player)) or (pos[0] > middle and not gameState.isOnRedTeam(data.player)):
+            if (pos[0] < data.middle and gameState.isOnRedTeam(data.player)) or (pos[0] > data.middle and not gameState.isOnRedTeam(data.player)):
                 offensive_enemy = min(offensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
             else:
-                if defensive_enemy[i] > data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]]:
-                    defensive_enemy[i] = data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]]
+                defensive_enemy = min(defensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
+                if abs(data.middle - pos[0]) < min_x[i]:
+                    min_x[i] = abs(data.middle - pos[0])
                     ys[i] = pos[1]
-
+                    
     # if there is no offensive enemy
     if offensive_enemy == data.max_distance:
         # go to middle column on your side 
         if gameState.isOnRedTeam(current_player): home_col = gameState.data.layout.walls.width//2 - 1
         else: home_col = gameState.data.layout.walls.width//2
         # go to same rank as closest opponent if only one defender, and otherwise shadow one opponent each
-        if data.defender_threshold == 1: y = ys[defensive_enemy.index(min(defensive_enemy))]
+        if data.defender_threshold == 1: y = min(ys)
         else: y = ys[data.index_mapping[current_player]]
         
         offensive_enemy = 0
@@ -160,7 +159,7 @@ def enemies_distances(gameState:GameState, data:MCTSData, my_pos, current_player
         while offensive_enemy == 0:
             offensive_enemy = data.distances[my_pos[0]][my_pos[1]][home_col][y]
             y = (y+1) % gameState.data.layout.walls.height
-    return offensive_enemy, min(defensive_enemy)
+    return offensive_enemy, defensive_enemy
 
 def distance_home(gameState:GameState, data:MCTSData, my_pos, current_player):
     home_dist = data.max_distance

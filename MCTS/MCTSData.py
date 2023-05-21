@@ -19,6 +19,7 @@ class MCTSData:
         self.distributions:list[dict]
         self.max_distance:int
         self.defender_threshold:int
+        self.choke_points:list[list[int]]
         
         self.index_mapping = {0: 0, 1: 0, 2: 1, 3: 1}
         
@@ -38,3 +39,15 @@ class MCTSData:
         self.defender_threshold = 1
         if score > 5:
             self.defender_threshold = 10
+
+
+    def find_choke_points(self):
+        self.choke_points = []
+        list = []
+        xb, xr = self.state.data.layout.walls.width//2-1, self.state.data.layout.walls.width//2
+        for y in range(self.state.data.layout.walls.height):
+            if not self.state.data.layout.walls[xr][y] and not self.state.data.layout.walls[xb][y]: 
+                list.append(y)
+            else:
+                if list: self.choke_points.append(sum(list)//len(list))
+                list = []
