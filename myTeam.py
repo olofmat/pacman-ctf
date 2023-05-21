@@ -133,7 +133,7 @@ class DummyAgent(CaptureAgent):
     for i in range(4):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
-        threshold = 1 if self.data.state.isOnRedTeam(self.index) == self.data.state.isOnRedTeam(i) else 100
+        threshold = -1 if self.data.state.isOnRedTeam(self.index) == self.data.state.isOnRedTeam(i) else 100
         if self.data.player == i or self.data.distances[pos[0]][pos[1]][self.my_pos[0]][self.my_pos[1]] <= threshold: players.append(i)
     players = np.array(players)
     self.data.players = players

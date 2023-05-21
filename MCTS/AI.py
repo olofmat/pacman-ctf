@@ -24,6 +24,7 @@ def MCTSfindMove(data:MCTSData) -> str:
             team = "Red" if currentState.isOnRedTeam(data.player) else "Blue"
             role = "Defensive" if data.player <=  data.defender_threshold else "Offensive"
             print(f"maximum depth: {max_depth}, checked {distance} from starting position in {starting_position}, in team {team} as {role}")
+            print(f"Hypothisys is {np.round(evaluationHeuristic(GameState(data.state), data, data.player),2)}")
             printData(data.root)
             return data.root.chooseBestChild().move
 
