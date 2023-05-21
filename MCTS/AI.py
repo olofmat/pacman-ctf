@@ -8,13 +8,6 @@ from MCTS.MCTSData import MCTSData
 
 
 def MCTSfindMove(data:MCTSData) -> str:
-    if data.state.isOnRedTeam(data.player): mcts_score = data.state.getScore()
-    else: mcts_score = data.state.getScore()
-
-    if mcts_score > 5:
-        defender_threshold = 3
-    else: defender_threshold = 1
-
     moves = data.state.getLegalActions(data.player)
     removeStop(moves)
     if not moves: return None
@@ -52,7 +45,7 @@ def MCTSfindMove(data:MCTSData) -> str:
         # Expand tree if current has been visited and isn't a terminal node
         if current.visits > 0 and not currentState.isOver():
             moves = currentState.getLegalActions(current.nextPlayer(data.players))
-            if data.state.isOnRedTeam(data.player) == data.state.isOnRedTeam(current.nextPlayer(data.players)): removeStop(moves)
+            if data.state.isOnRedTeam(data.player) == data.state.isOnRedTeam(current.nextPlayer(data.players)): removeStop(moves) # and current.nextPlayer(data.players) > data.defender_threshold:
             current.makeChildren(current.nextPlayer(data.players), moves)
             current = current.selectChild(data.UCB1)
             currentState = currentState.generateSuccessor(current.player, current.move)
@@ -62,7 +55,7 @@ def MCTSfindMove(data:MCTSData) -> str:
                     currentState, starting_position, furthest_away_distance, furthest_away_position, data.player)
 
         # Rollout
-        result = evaluationHeuristic(currentState, data, current.player,defender_threshold)
+        result = evaluationHeuristic(currentState, data, current.player)
 
         # Backpropagate
         current.backpropagate(data.state, result)
@@ -71,7 +64,7 @@ def MCTSfindMove(data:MCTSData) -> str:
     return data.root.chooseBestChild().move
 
 
-def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int, defender_threshold :int) -> tuple[float]:
+def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int) -> tuple[float]:
     ### REASONABLE HEURISTIC. Maximize your score. Maximize how much you're carrying but less so than how much you deposited.
     ### Minimize how much food your opponent has captured but it's harder so dont spend to much time on it.
     my_pos = gameState.getAgentPosition(current_player)
@@ -83,30 +76,31 @@ def evaluationHeuristic(gameState: GameState, data:MCTSData, current_player:int,
     home_penalty_red, home_penalty_blue = home_penalty(gameState)
         
     # summing
-    heuristic_red  =  score + foodCapturedByRed/4 - foodCapturedByBlue/4 - home_penalty_red + home_penalty_blue
-    heuristic_blue = -score - foodCapturedByRed/4 + foodCapturedByBlue/4 + home_penalty_red - home_penalty_blue
+    heuristic_red  =  score*2 + foodCapturedByRed/2 - foodCapturedByBlue/2 - home_penalty_red + home_penalty_blue
+    heuristic_blue = -score*2 - foodCapturedByRed/2 + foodCapturedByBlue/2 + home_penalty_red - home_penalty_blue
 
     # if enemy: return here
     if gameState.isOnRedTeam(data.player) != gameState.isOnRedTeam(current_player):
         red, blue = enemy_heuristic(gameState, data, my_pos, current_player)
         return heuristic_red + red, heuristic_blue + blue
 
-    food = closest_food(data, my_pos)
-    offensive_enemy, defensive_enemy = enemies_distances(gameState, data, my_pos)
-    home_dist = distance_home(gameState, data, my_pos, current_player)
-    num_carrying = gameState.getAgentState(current_player).numCarrying
-    own_capsule = capsule_distance(gameState, data, my_pos)
-
-    team = f"Red{current_player<=defender_threshold}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=defender_threshold}"
+    offensive_enemy, defensive_enemy = enemies_distances(gameState, data, my_pos, current_player)
+    team = f"Red{current_player<=data.defender_threshold}" if gameState.isOnRedTeam(current_player) else f"Blue{current_player<=data.defender_threshold}"
     match team:
         case "RedTrue":
-            heuristic_red += (1-offensive_enemy/data.max_distance)/2 + (1-own_capsule/data.max_distance)/8 - (1-defensive_enemy/data.max_distance)/16
+            heuristic_red  += (1-offensive_enemy/data.max_distance)*10
         case "RedFalse":
-            heuristic_red += (1-food/data.max_distance) - (1-defensive_enemy/data.max_distance)/16
+            food = closest_food(data, my_pos)
+            num_carrying = gameState.getAgentState(current_player).numCarrying
+            home = 0
+            if num_carrying > 5 or (num_carrying > 0 and len(data.food) <= 2): 
+                home_dist = distance_home(gameState, data, my_pos, current_player)
+                home = (1-home_dist/data.max_distance)*2
+            heuristic_red  += (1-food/data.max_distance)/2 + home - (1-defensive_enemy/data.max_distance)/64
         case "BlueTrue":
-            heuristic_blue += (1-offensive_enemy/data.max_distance)/8 + (1-own_capsule/data.max_distance)/16
+            heuristic_blue += 0
         case "BlueFalse":
-            heuristic_blue += (1-food/data.max_distance)/8
+            heuristic_blue += 0
         case _:
             raise Exception
     return heuristic_red, heuristic_blue
@@ -118,8 +112,8 @@ def home_penalty(gameState:GameState):
     for i in range(4):
         pos = gameState.getAgentPosition(i)
         if not pos: continue
-        if gameState.isOnRedTeam(i)     and pos[0] == 1: home_penalty_red += 3
-        if not gameState.isOnRedTeam(i) and pos[0] == gameState.data.layout.width-2: home_penalty_blue += 3
+        if gameState.isOnRedTeam(i)     and pos[0] == 1: home_penalty_red += 7
+        if not gameState.isOnRedTeam(i) and pos[0] == gameState.data.layout.width-2: home_penalty_blue += 7
     return home_penalty_red, home_penalty_blue
 
 def closest_food(data:MCTSData, my_pos):
@@ -129,16 +123,35 @@ def closest_food(data:MCTSData, my_pos):
         food = min(food, data.distances[my_pos[0]][my_pos[1]][food_location[0]][food_location[1]])
     return food
 
-def enemies_distances(gameState:GameState, data:MCTSData, my_pos):
-    offensive_enemy = defensive_enemy = data.max_distance
+def enemies_distances(gameState:GameState, data:MCTSData, my_pos, current_player):
+    offensive_enemy = data.max_distance
+    defensive_enemy = [data.max_distance]*2
     middle = (gameState.data.layout.walls.width-1)/2
-    for dist in data.distributions:
-        for pos in dist:
+    ys = [gameState.data.layout.walls.height//2]*2
+    for i, distribution in enumerate(data.distributions):
+        for pos in distribution:
             if (pos[0] < middle and gameState.isOnRedTeam(data.player)) or (pos[0] > middle and not gameState.isOnRedTeam(data.player)):
                 offensive_enemy = min(offensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
             else:
-                defensive_enemy = min(defensive_enemy, data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]])
-    return offensive_enemy, defensive_enemy
+                if defensive_enemy[i] > data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]]:
+                    defensive_enemy[i] = data.distances[my_pos[0]][my_pos[1]][pos[0]][pos[1]]
+                    ys[i] = pos[1]
+
+    # if there is no offensive enemy
+    if offensive_enemy == data.max_distance:
+        # go to middle column on your side 
+        if gameState.isOnRedTeam(current_player): home_col = gameState.data.layout.walls.width//2 - 1
+        else: home_col = gameState.data.layout.walls.width//2
+        # go to same rank as closest opponent if only one defender, and otherwise shadow one opponent each
+        if data.defender_threshold == 1: y = ys[defensive_enemy.index(min(defensive_enemy))]
+        else: y = ys[data.index_mapping[current_player]]
+        
+        offensive_enemy = 0
+        # while loop here so (home_col, y) is not wall
+        while offensive_enemy == 0:
+            offensive_enemy = data.distances[my_pos[0]][my_pos[1]][home_col][y]
+            y = (y+1) % gameState.data.layout.walls.height
+    return offensive_enemy, min(defensive_enemy)
 
 def distance_home(gameState:GameState, data:MCTSData, my_pos, current_player):
     home_dist = data.max_distance

@@ -18,6 +18,9 @@ class MCTSData:
         self.food:list
         self.distributions:list[dict]
         self.max_distance:int
+        self.defender_threshold:int
+        
+        self.index_mapping = {0: 0, 1: 0, 2: 1, 3: 1}
         
 
     def get_food_locations(self) -> None:
@@ -27,3 +30,11 @@ class MCTSData:
             for y in range(got_food.height):
                 if got_food[x][y]: self.food.append((x,y))
         
+        
+    def calculate_threshold(self) -> None:
+        if self.state.isOnRedTeam(self.player): score = self.state.getScore()
+        else: score = -self.state.getScore()
+
+        self.defender_threshold = 1
+        if score > 5:
+            self.defender_threshold = 10

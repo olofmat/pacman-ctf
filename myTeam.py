@@ -100,7 +100,7 @@ class DummyAgent(CaptureAgent):
     self.DIR_STR2VEC = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0)}
     self.DIR_VEC2STR = {(0,1):'North', (0,-1):'South', (1,0):'East', (-1,0):'West', (0,0):'Stop'}
     
-    self.data = MCTSData(gameState, self.index, UCB1=1, sim_time=0.5)
+    self.data = MCTSData(gameState, self.index, UCB1=1, sim_time=0.1)
     self.move_from_MCTS = False
     
     self.start_pos = gameState.getAgentPosition(self.index)
@@ -126,9 +126,8 @@ class DummyAgent(CaptureAgent):
 
   def chooseAction(self, gameState:GameState) -> str:
     self.my_pos = gameState.getAgentPosition(self.data.player)
-    friend_pos = gameState.getAgentPosition(self.friend_index)
 
-    self.update_distributions(gameState, friend_pos)
+    self.update_distributions(gameState)
     
     players = []
     for i in range(4):
@@ -147,8 +146,9 @@ class DummyAgent(CaptureAgent):
         
     # if MCTS is uncertain of what to do
     # child_visits = [child.visits for child in self.data.root.children]
-    # if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 0.01*self.data.root.visits): 
-    #     if self.index % 2 == 0: self.go_to_nearest_enemy()
+    # if len(child_visits) > 1 and (max(child_visits) - min(child_visits) < 0.05*self.data.root.visits): 
+        # self.moves = []
+    #     # if self.index <= 1: self.go_to_nearest_enemy()
     #     if self.moves:
     #         self.move_from_MCTS = False
     #         return self.moves[0]
@@ -167,8 +167,8 @@ class DummyAgent(CaptureAgent):
 
   def go_to_nearest_food(self) -> None:
     print("FOOD")
-    if self.index % 2 == 0: food = self.data.food[:len(self.data.food)//2]
-    if self.index % 2 == 1: food = self.data.food[len(self.data.food)//2:]
+    if self.index <= 1: food = self.data.food[:len(self.data.food)//2]
+    else: food = self.data.food[len(self.data.food)//2:]
     
     closest_food_dist, closest_food = 100, ()
     for food_location in food:
@@ -277,11 +277,11 @@ class DummyAgent(CaptureAgent):
 
   def discard_tree(self, gameState:GameState):
     self.data.state = gameState
+    self.data.calculate_threshold()
     self.data.root = Node(self.data.player)
     moves = gameState.getLegalActions(self.data.player)
-    removeStop(moves)
+    if self.index > self.data.defender_threshold: removeStop(moves)
     self.data.root.makeChildren(self.data.player, moves)
-    self.data.keeps = 0
     
     
   def keeping_tree(self) -> bool:
@@ -306,16 +306,17 @@ class DummyAgent(CaptureAgent):
     return distance_matrix
   
   
-  def update_distributions(self,gameState:GameState, friend_pos): ### ADD FRIEND
+  def update_distributions(self,gameState:GameState): ### ADD FRIEND
     global distributions
-    distances = gameState.getAgentDistances()
-    
+    friend_pos = gameState.getAgentPosition(self.friend_index)
     enemies = self.getOpponents(gameState)
 
+    distances = gameState.getAgentDistances()
+    
     ### CONVERTS THEIR 0-3 INDEX TO 0-1
     last_enemy = (self.index-1) % 4
     if last_enemy < 2: enemy_index = 0
-    else: enemy_index =1
+    else: enemy_index = 1
 
     if gameState.getAgentPosition(enemies[enemy_index]): ### THEN WE CAN SEE THEM AND KNOW THEIR EXACT POSITION
         distributions[enemy_index] = dict()
